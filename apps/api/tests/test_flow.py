@@ -45,3 +45,49 @@ def test_directory_to_enquiry_to_portal_and_admin():
         assert client.get('/api/me/overview',headers=hs).json()['cashback'][0]['status']=='eligible'
         assert client.get('/api/admin/enquiries').status_code==401
         assert client.get('/api/admin/summary',headers=ha).json()['properties']==1
+
+
+def test_repeatable_listing_groups_and_picture_layout_roundtrip():
+    with TestClient(api.app) as client:
+        admin = client.post('/api/auth/login', json={'email':'admin@example.com','password':'not-a-real-admin-password'})
+        ha = {'Authorization':'Bearer '+admin.json()['token']}
+        property_json = {
+            'name':'Student Residence Repeatable Example', 'city':'Manchester', 'published':True,
+            'highlights':['All bills included','On-site study area','Security'],
+            'amenities':['Wi-Fi','Bike storage','Common room','Laundry'],
+            'faq':[{'question':'Are bills included?','answer':'Yes'},{'question':'Is there bike storage?','answer':'Yes'}],
+            'gallery':[
+                {'url':'https://example.com/room-a.jpg','alt':'En suite bedroom','category':'Rooms','layout':'regular'},
+                {'url':'https://example.com/building.jpg','alt':'Building exterior','category':'Exterior','layout':'large'},
+                {'url':'https://example.com/lounge.jpg','alt':'Common lounge','category':'Shared spaces','layout':'regular'},
+            ],
+            'floorplans':[{'url':'https://example.com/floorplan.jpg','alt':'Floor 2','layout':'large'}],
+            'offers':[{'title':'Welcome offer','description':'Eligibility to confirm'}],
+            'landmarks':[{'name':'Campus','detail':'Nearby'}],
+        }
+        created=client.post('/api/admin/properties',json=property_json,headers=ha)
+        assert created.status_code==201,created.text
+        record=created.json()
+        assert record['gallery'][1]['layout']=='large'
+        assert record['gallery'][1]['alt']=='Building exterior'
+        assert record['floorplans'][0]['layout']=='large'
+        assert len(record['highlights'])==3
+        public=client.get('/api/properties/'+record['slug'])
+        assert public.status_code==200,public.text
+        assert public.json()['gallery'][1]['layout']=='large'
+        assert public.json()['faq'][1]['question']=='Is there bike storage?'
+        updated={**property_json,'highlights':list(reversed(property_json['highlights'])),
+                 'gallery':[property_json['gallery'][1],property_json['gallery'][0]]}
+        saved=client.patch('/api/admin/properties/'+str(record['id']),json=updated,headers=ha)
+        assert saved.status_code==200,saved.text
+        after=client.get('/api/properties/'+record['slug']).json()
+        assert after['highlights'][0]=='Security'
+        assert [p['layout'] for p in after['gallery']]==['large','regular']
+        assert after['gallery'][0]['category']=='Exterior'
+        rejected=client.patch('/api/admin/properties/'+str(record['id']),json={**updated,
+            'gallery':[{'url':'https://example.com/a.jpg','layout':'ultra-large'}]},headers=ha)
+        assert rejected.status_code==422
+        rejected_url=client.patch('/api/admin/properties/'+str(record['id']),json={**updated,
+            'gallery':[{'url':'javascript:alert(1)','layout':'large'}]},headers=ha)
+        assert rejected_url.status_code==422
+        assert client.get('/api/properties/'+record['slug']).json()['gallery'][0]['layout']=='large'

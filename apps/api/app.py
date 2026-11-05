@@ -203,6 +203,20 @@ class Credentials(BaseModel):
     password: str
 class Registration(Credentials):
     name: str = Field(min_length=2,max_length=150)
+class MediaInput(BaseModel):
+    """An image is both an asset and a per-image layout choice."""
+    url: str = Field(min_length=9, max_length=2048)
+    alt: str = Field(default='', max_length=240)
+    category: str = Field(default='Photos', max_length=100)
+    layout: Literal['regular', 'large'] = 'regular'
+
+    @field_validator('url')
+    @classmethod
+    def valid_web_image(cls, value: str):
+        if not re.fullmatch(r'https?://[^\s]+', value):
+            raise ValueError('Use a full HTTP(S) image URL')
+        return value
+
 class PropertyInput(BaseModel):
     name: str = Field(min_length=3,max_length=220)
     slug: str = ''
@@ -217,8 +231,8 @@ class PropertyInput(BaseModel):
     policies: list[dict] = Field(default_factory=list)
     faq: list[dict] = Field(default_factory=list)
     landmarks: list[dict] = Field(default_factory=list)
-    gallery: list[dict] = Field(default_factory=list)
-    floorplans: list[dict] = Field(default_factory=list)
+    gallery: list[MediaInput] = Field(default_factory=list)
+    floorplans: list[MediaInput] = Field(default_factory=list)
     tour_url: str = ''
     offers: list[dict] = Field(default_factory=list)
     reviews: list[dict] = Field(default_factory=list)
