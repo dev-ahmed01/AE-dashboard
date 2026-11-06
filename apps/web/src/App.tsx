@@ -351,7 +351,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
        {activeSection==='gallery'&&<div className="accom-fields-group">
   <RepeatableField title="Property photos" items={form.gallery} create={()=>({url:'',alt:'',category:'Rooms',layout:'regular' as const})} onChange={v=>set('gallery',v)} describe={(v,i)=>v.alt||v.category||`Picture ${i+1}`} help="Add approved images and choose Regular or Large for each one. Changes are shown in the listing mosaic."
    render={(item,change)=>media(item,change,'Property')}/>
-  <div className="gallery-layout-preview" aria-label="Live gallery layout preview">{form.gallery.filter(p=>absolute(p.url)).slice(0,5).map((photo,i)=><div key={i} className={'gallery-preview-tile '+((photo.layout||'regular')==='large'?'is-large':'is-regular')}><img src={photo.url} alt={photo.alt||`Image ${i+1}`} loading="lazy"/></div>)}{!form.gallery.some(p=>absolute(p.url))&&<p>Gallery layout preview appears here when you add image URLs.</p>}{form.gallery.filter(p=>absolute(p.url)).length>5&&<p>Showing the first five images; the full gallery opens in the lightbox.</p>}</div>
+
   </div>}
        {activeSection==='highlights'&&<div className="accom-fields-group"><RepeatableField title="Highlights" items={form.highlights} create={()=>''} onChange={v=>set('highlights',v)} describe={v=>v||'New highlight'} render={(v,change)=><label>Highlight text<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
   <RepeatableField title="Amenities" items={form.amenities} create={()=>''} onChange={v=>set('amenities',v)} describe={v=>v||'New amenity'} render={(v,change)=><label>Amenity<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
