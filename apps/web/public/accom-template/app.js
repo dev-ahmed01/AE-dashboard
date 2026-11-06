@@ -98,6 +98,7 @@ function renderAccordions() {
 }
 
 function setGalleryImage(index) {
+  if (!media.length) return;
   state.galleryIndex = (index + media.length) % media.length;
   const item = media[state.galleryIndex];
   const image = $('#lightbox-image');
@@ -118,6 +119,11 @@ function openGallery(index = 0) {
 }
 
 function setupGallery() {
+  if (!media.length) {
+    const view = $('#view-gallery');
+    if (view) { view.disabled = true; view.textContent = 'Photos coming soon'; }
+    return;
+  }
   $('#gallery-thumbs').innerHTML = media.map((item, index) => `<button type="button" data-thumb-index="${index}" aria-label="Show ${item.category} image"><img src="${item.src}" width="120" height="80" alt=""></button>`).join('');
   $$('.gallery-tile').forEach((button) => button.addEventListener('click', () => openGallery(Number(button.dataset.galleryIndex))));
   $('#view-gallery').addEventListener('click', () => openGallery(0));
