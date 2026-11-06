@@ -595,6 +595,27 @@ def _as_db(model):
     if isinstance(model,PropertyInput):data['offers']=[o.model_dump(mode='json') for o in model.offers]
     return data
 
+class NewPropertyDraft(BaseModel):
+    name: str = Field(min_length=3, max_length=220)
+
+@app.post('/api/admin/properties/draft',status_code=201)
+def create_property_draft(data:NewPropertyDraft,user:User=Depends(require_admin),db:Session=Depends(get_db)):
+    """Create an unpublished property page with only a name."""
+    name=data.name.strip()
+    if len(name)<3:raise HTTPException(422,'Page name must contain at least 3 characters')
+    base=slugify(name)
+    if not base:raise HTTPException(422,'Enter a valid page name')
+    candidate=base
+    suffix=2
+    while db.scalar(select(Property.id).where(Property.slug==candidate)):
+        candidate=base[:213]+'-'+str(suffix)
+        suffix+=1
+        if suffix>9999:raise HTTPException(409,'Too many pages with this name')
+    page=Property(name=name,slug=candidate,city='',country='United Kingdom',
+                  description='',published=False,archived=False,noindex=True)
+    db.add(page);db.flush();log(db,user,'property.draft.create',str(page.id));db.commit();db.refresh(page)
+    return prop_json(page,True,staff=True)
+
 @app.post('/api/admin/properties',status_code=201)
 def add_property(data:PropertyInput,user:User=Depends(require_admin),db:Session=Depends(get_db)):
     if data.published:raise HTTPException(422,'Save a draft, add rooms, then publish after completing the checklist')
