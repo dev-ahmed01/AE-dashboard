@@ -11,7 +11,7 @@ function hydrate(){
  put('.cta-property-title h2',snapshot.name);
  put('.cta-address',address);
  put('.cta-kicker','STUDENT LIVING · '+(snapshot.city||'UK').toUpperCase());
- put('#overview .overview-lead',snapshot.description);
+ put('#overview .overview-priority-intro p:last-of-type',snapshot.description);
  put('.cta-price-hero small',snapshot.is_demo?'Illustrative from':'Rooms from');
  put('.cta-footnote',snapshot.is_demo?
    'Demo prices and illustrative media. No live booking or verified availability.':
