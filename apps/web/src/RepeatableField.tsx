@@ -7,7 +7,7 @@ export default function RepeatableField<T>({title,items,create,onChange,render,d
   render:(item:T,change:(value:T)=>void,index:number)=>ReactNode;
   describe?:(item:T,index:number)=>string;help?:string;
 }){
-  const [expanded,setExpanded]=useState(items.length<=2)
+  const [expanded,setExpanded]=useState(items.length>0&&items.length<=2)
   const change=(index:number,value:T)=>onChange(items.map((item,i)=>i===index?value:item))
   const move=(index:number,by:number)=>{
     const next=[...items];const destination=index+by
