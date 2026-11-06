@@ -354,3 +354,15 @@
  .category-add-page .category-create-foot{flex-direction:column;align-items:stretch}
  .category-add-page .category-create-foot button{width:100%}
 }
+
+
+.accom-editor-fields .image-layout-switch{
+  display:block;min-width:0
+}
+.accom-editor-fields .image-layout-switch .layout-switch{
+  display:flex;flex-wrap:wrap;width:fit-content;gap:4px;margin-top:7px
+}
+.accom-editor-fields .image-layout-switch small{
+  display:block;clear:both;font-size:10px;color:#857c76;
+  line-height:1.6;margin-top:11px;max-width:100%
+}
