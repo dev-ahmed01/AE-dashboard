@@ -1,4 +1,4 @@
-import { faqs, filterRooms, formatMoney, media, policies, readInquiryValues, rooms, totalRent, validateInquiry } from './data.js';
+import { faqs, filterRooms, formatMoney, media, policies, readInquiryValues, rooms, totalRent, validateInquiry, snapshot } from './data.js';
 
 const state = {
   category: 'all',
@@ -58,7 +58,7 @@ function renderRooms() {
 }
 
 function updateSelectedRoom() {
-  const cheapest = Math.min(...rooms.flatMap(room => room.tenancies.map(option => option.weekly)));
+  const rates=rooms.flatMap(room=>room.tenancies.map(t=>t.weekly)).filter(v=>v!=null&&v>0);const cheapest=rates.length?Math.min(...rates):null;
   const startingPrice = formatMoney(cheapest);
   $('#cta-from-price').textContent = startingPrice;
   const room = selectedRoom();
@@ -67,7 +67,7 @@ function updateSelectedRoom() {
   if (!room) {
     $('#mobile-room').textContent = 'No room selected';
     $('#mobile-price').textContent = `From ${startingPrice}/wk`;
-    $('#mobile-commitment').textContent = 'Explore rooms · demo prices';
+    $('#mobile-commitment').textContent = 'Explore rooms · verify rates';
     $('#mobile-main-action').textContent = 'View rooms';
     $('#cta-enquire-button').textContent = 'Ask about this property';
     return;
@@ -79,7 +79,7 @@ function updateSelectedRoom() {
   $('#cta-total').textContent = formatMoney(totalRent(tenancy.weekly, tenancy.weeks));
   $('#mobile-room').textContent = room.name;
   $('#mobile-price').textContent = `${formatMoney(tenancy.weekly)}/wk`;
-  $('#mobile-commitment').textContent = `${tenancy.weeks} weeks · ${formatMoney(totalRent(tenancy.weekly, tenancy.weeks))} total · demo`;
+  $('#mobile-commitment').textContent = `${tenancy.weeks} weeks · ${formatMoney(totalRent(tenancy.weekly, tenancy.weeks))} total · estimated`;
   $('#mobile-main-action').textContent = 'Enquire';
   $('#cta-enquire-button').textContent = 'Enquire about selected room';
 }
@@ -103,7 +103,7 @@ function setGalleryImage(index) {
   const image = $('#lightbox-image');
   image.src = item.src;
   image.alt = item.alt;
-  $('#lightbox-caption').textContent = `${item.category} · ${state.galleryIndex + 1} of ${media.length} · illustrative prototype media`;
+  $('#lightbox-caption').textContent = `${item.category} · ${state.galleryIndex + 1} of ${media.length} · ${snapshot.is_demo?'illustrative demo':'property photo'}`;
   $$('#gallery-thumbs button').forEach((button, buttonIndex) => {
     button.classList.toggle('active', buttonIndex === state.galleryIndex);
     button.setAttribute('aria-current', buttonIndex === state.galleryIndex ? 'true' : 'false');
@@ -112,6 +112,7 @@ function setGalleryImage(index) {
 
 function openGallery(index = 0) {
   const dialog = $('#gallery-dialog');
+  if (!media.length)return;
   if (!dialog.open) dialog.showModal();
   setGalleryImage(index);
 }
@@ -270,7 +271,7 @@ function openEnquiry(topic) {
     $(`#${field}-error`).textContent = '';
   });
   $('#enquiry-room-summary').innerHTML = room
-    ? `<strong>${room.name}</strong><span>${tenancy.weeks} weeks · ${formatMoney(tenancy.weekly)}/week · demo total ${formatMoney(totalRent(tenancy.weekly, tenancy.weeks))}</span>`
+    ? `<strong>${room.name}</strong><span>${tenancy.weeks} weeks · ${formatMoney(tenancy.weekly)}/week · estimated total ${formatMoney(totalRent(tenancy.weekly, tenancy.weeks))}</span>`
     : '<strong>iQ Kingston</strong><span>General property enquiry · choose a room later</span>';
   if (topic) $('#topic').value = topic;
   $('#enquiry-dialog').showModal();
