@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react'
+import {useEffect,useMemo,useRef,useState} from 'react'
 import {ArrowRight,Check,ChevronDown,ChevronLeft,ChevronRight,Compass,Heart,Home,Image as ImageIcon,LayoutDashboard,MapPin,Menu,Search,ShieldCheck,SlidersHorizontal,Sparkles,Users,Wallet,X} from 'lucide-react'
 import RepeatableField from './RepeatableField'
 import TenancyEditor, {type Tenancy} from './TenancyEditor'
@@ -226,7 +226,15 @@ function EditorialEditor({page,templates,close,onSaved}:{page:Editorial;template
 
 function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>void;saved:()=>void}){
  const [form,setForm]=useState({...defaults,...(source||{}),gallery:(source?.gallery||[]).map((photo,i):Media=>({...photo,layout:photo.layout||(i===0?'large':'regular')}))})
- const [busy,setBusy]=useState(false),[error,setError]=useState(''),[previewDraft,setPreviewDraft]=useState(false)
+ const [busy,setBusy]=useState(false),[error,setError]=useState('')
+ const [activeSection,setActiveSection]=useState('essentials')
+ const [previewHtml,setPreviewHtml]=useState('')
+ const [previewLoading,setPreviewLoading]=useState(false)
+ const [previewError,setPreviewError]=useState('')
+ const [previewMode,setPreviewMode]=useState<'desktop'|'mobile'>('desktop')
+ const [previewScale,setPreviewScale]=useState(.4)
+ const previewContainerRef=useRef<HTMLDivElement|null>(null)
+ const previewFrameRef=useRef<HTMLIFrameElement|null>(null)
  const original=JSON.stringify({...defaults,...(source||{})})
  const dirty=JSON.stringify({...defaults,...(source||{}),...form})!==original
  const safeClose=()=>{if(!dirty||window.confirm('Discard your unsaved changes?'))close()}
@@ -252,33 +260,143 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
   try{await api(source?'/api/admin/properties/'+source.id:'/api/admin/properties',{method:source?'PATCH':'POST',body:JSON.stringify(data)});saved()}
   catch(err){setError((err as Error).message)}finally{setBusy(false)}
  }
- return <div className="drawer-shade"><div className="drawer" role="dialog" aria-modal="true" aria-label="Property editor"><div className="drawer-header"><div><span className="eyebrow">LISTING EDITOR</span><h2>{source?'Edit property':'Add a property'}</h2></div><button type="button" onClick={safeClose} aria-label="Close"><X/></button></div>
- <form onSubmit={submit} className="drawer-form"><div className="editor-section-jump"><label>Jump to section<select onChange={e=>document.getElementById(e.target.value)?.scrollIntoView({block:'start',behavior:'smooth'})} defaultValue="essentials"><option value="essentials">Property essentials</option><option value="features">Photos and features</option><option value="policies">Policies, FAQs and trust</option><option value="publishing">Search and SEO</option></select></label></div><h3 id="essentials">Property essentials</h3>
+
+ const sections=[
+  {id:'essentials',title:'Property essentials',desc:'Identity, address and introduction',index:'01'},
+  {id:'gallery',title:'Property photos',desc:'Gallery layout and image sizing',index:'02'},
+  {id:'highlights',title:'Highlights & amenities',desc:'Key features and virtual tour',index:'03'},
+  {id:'policies',title:'Policies & FAQs',desc:'Resident information and answers',index:'04'},
+  {id:'landmarks',title:'Landmarks & floor plans',desc:'Nearby places and visual plans',index:'05'},
+  {id:'offers',title:'Offers & reviews',desc:'Promotions, trust and sources',index:'06'},
+  {id:'seo',title:'SEO & publishing',desc:'Metadata and index settings',index:'07'},
+ ]
+ const currentSection=sections.find(item=>item.id===activeSection)||sections[0]
+ const previewSignature=JSON.stringify(form)
+ useEffect(()=>{
+  if(!source?.id){setPreviewHtml('');return}
+  let cancelled=false
+  const timer=window.setTimeout(async()=>{
+   setPreviewLoading(true);setPreviewError('')
+   try{
+    const response=await fetch('/api/admin/properties/'+source.id+'/preview-draft',{
+     method:'POST',
+     headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+     body:previewSignature
+    })
+    if(!response.ok)throw new Error('Could not render preview ('+response.status+').')
+    const html=await response.text()
+    if(!cancelled)setPreviewHtml(html)
+   }catch(err){if(!cancelled)setPreviewError((err as Error).message)}
+   finally{if(!cancelled)setPreviewLoading(false)}
+  },480)
+  return()=>{cancelled=true;window.clearTimeout(timer)}
+ },[source?.id,previewSignature])
+ useEffect(()=>{
+  const node=previewContainerRef.current
+  if(!node)return
+  const resize=()=>{
+   const width=previewMode==='desktop'?1280:390
+   setPreviewScale(Math.max(.15,Math.min(1,(node.clientWidth-20)/width)))
+  }
+  resize()
+  const obs=new ResizeObserver(resize)
+  obs.observe(node)
+  return()=>obs.disconnect()
+ },[previewMode])
+ useEffect(()=>{
+  if(!previewHtml)return
+  const frame=previewFrameRef.current
+  if(!frame)return
+  try{
+   const selector=({essentials:'#overview',gallery:'.gallery-grid',highlights:'#included',policies:'#policies',landmarks:'.overview-landmarks',offers:'.cta-quickfacts',seo:'body'} as Record<string,string>)[activeSection]
+   frame.contentDocument?.querySelector(selector)?.scrollIntoView({block:'start',behavior:'instant'})
+  }catch{ /* A browser can restrict frame access; the preview still renders. */ }
+ },[activeSection,previewHtml])
+ const openFullPreview=()=>{
+  if(!previewHtml){setPreviewError('Complete a saved draft to enable the full preview.');return}
+  const tab=window.open('about:blank','_blank')
+  if(!tab){setPreviewError('Allow pop-ups to open the preview.');return}
+  tab.document.open();tab.document.write(previewHtml);tab.document.close()
+ }
+ const previewWidth=previewMode==='desktop'?1280:390
+ 
+ return <div className="drawer-shade accom-editor-overlay" role="presentation">
+  <div className="drawer accom-page-editor" role="dialog" aria-modal="true" aria-label="Property page editor">
+   <header className="accom-editor-header">
+    <div className="accom-editor-title">
+     <button type="button" className="accom-editor-back" onClick={safeClose}><ChevronLeft size={17}/> All Pages</button>
+     <span className="eyebrow">CATEGORY / ACCOMMODATION PAGE</span>
+     <h2>{form.name||'Untitled accommodation'}</h2>
+     <p>Choose a section, update its content and review the actual property design.</p>
+    </div>
+    <div className="accom-editor-head-actions"><span className="accom-editor-status">{source?.published?'Published':'Draft'}</span><button type="button" className="outline" onClick={safeClose} aria-label="Close page editor"><X size={18}/></button></div>
+   </header>
+   <form onSubmit={submit} className="drawer-form accom-editor-form">
+    <div className="accom-editor-workspace">
+     <aside className="accom-editor-sidebar" aria-label="Page sections">
+      <div className="accom-editor-pane-heading">EDIT SECTIONS <span>{sections.length} sections</span></div>
+      <nav className="accom-editor-sections" aria-label="Choose editing section">
+       {sections.map(item=><button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>setActiveSection(item.id)}><span className="accom-editor-section-index">{item.index}</span><span>{item.title}</span><ChevronRight size={15}/></button>)}
+      </nav>
+      <div className="accom-editor-side-note"><strong>Approved Accom template</strong><small>Only content changes. Your original layout, room comparison and enquiry design stay intact.</small></div>
+     </aside>
+     <main className="accom-editor-fields" aria-live="off">
+      <div className="accom-editor-fields-head"><span className="eyebrow">{currentSection.index} / PAGE CONTENT</span><h3>{currentSection.title}</h3><p>{currentSection.desc}. Edits are reflected in the preview.</p></div>
+      <div className="accom-editor-fields-body">
+       {activeSection==='essentials'&&<div className="accom-fields-group">
   <label>Property name<input required minLength={3} value={form.name} onChange={e=>set('name',e.target.value)}/></label><label className="checkline"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demonstration content — cannot be published until verified</label>
   <div className="form-grid"><label>City<input required value={form.city} onChange={e=>set('city',e.target.value)}/></label><label>Country<input value={form.country} onChange={e=>set('country',e.target.value)}/></label><label>Postcode<input value={form.postcode} onChange={e=>set('postcode',e.target.value)}/></label><label>Nearby university<input value={form.university} onChange={e=>set('university',e.target.value)}/></label></div>
   <label>Address<input value={form.address} onChange={e=>set('address',e.target.value)}/></label><label>Overview / property description<textarea rows={5} value={form.description} onChange={e=>set('description',e.target.value)}/></label>
-  <h3 id="features">Gallery &amp; features</h3>
+  </div>}
+       {activeSection==='gallery'&&<div className="accom-fields-group">
   <RepeatableField title="Property photos" items={form.gallery} create={()=>({url:'',alt:'',category:'Rooms',layout:'regular' as const})} onChange={v=>set('gallery',v)} describe={(v,i)=>v.alt||v.category||`Picture ${i+1}`} help="Add approved images and choose Regular or Large for each one. Changes are shown in the listing mosaic."
    render={(item,change)=>media(item,change,'Property')}/>
   <div className="gallery-layout-preview" aria-label="Live gallery layout preview">{form.gallery.filter(p=>absolute(p.url)).slice(0,5).map((photo,i)=><div key={i} className={'gallery-preview-tile '+((photo.layout||'regular')==='large'?'is-large':'is-regular')}><img src={photo.url} alt={photo.alt||`Image ${i+1}`} loading="lazy"/></div>)}{!form.gallery.some(p=>absolute(p.url))&&<p>Gallery layout preview appears here when you add image URLs.</p>}{form.gallery.filter(p=>absolute(p.url)).length>5&&<p>Showing the first five images; the full gallery opens in the lightbox.</p>}</div>
-  <RepeatableField title="Highlights" items={form.highlights} create={()=>''} onChange={v=>set('highlights',v)} describe={v=>v||'New highlight'} render={(v,change)=><label>Highlight text<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
+  </div>}
+       {activeSection==='highlights'&&<div className="accom-fields-group"><RepeatableField title="Highlights" items={form.highlights} create={()=>''} onChange={v=>set('highlights',v)} describe={v=>v||'New highlight'} render={(v,change)=><label>Highlight text<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
   <RepeatableField title="Amenities" items={form.amenities} create={()=>''} onChange={v=>set('amenities',v)} describe={v=>v||'New amenity'} render={(v,change)=><label>Amenity<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
   <label>Virtual tour URL<input type="url" value={form.tour_url||''} onChange={e=>set('tour_url',e.target.value)}/></label>
-  <h3 id="policies">Details &amp; trust</h3>
+  </div>}
+       {activeSection==='policies'&&<div className="accom-fields-group">
   <RepeatableField title="House rules & policies" items={form.policies} create={()=>({question:'',answer:''})} onChange={v=>set('policies',v)} describe={v=>v.question||'New policy'} render={(v,change)=><><label>Policy title<input value={v.question} onChange={e=>change({...v,question:e.target.value})}/></label><label>Details<textarea rows={2} value={v.answer} onChange={e=>change({...v,answer:e.target.value})}/></label></>}/>
   <RepeatableField title="Frequently asked questions" items={form.faq} create={()=>({question:'',answer:''})} onChange={v=>set('faq',v)} describe={v=>v.question||'New FAQ'} render={(v,change)=><><label>Question<input value={v.question} onChange={e=>change({...v,question:e.target.value})}/></label><label>Answer<textarea rows={2} value={v.answer} onChange={e=>change({...v,answer:e.target.value})}/></label></>}/>
-  <RepeatableField title="Nearby landmarks" items={form.landmarks} create={()=>({name:'',detail:''})} onChange={v=>set('landmarks',v)} describe={v=>v.name||'New landmark'} render={(v,change)=><><label>Landmark<input value={v.name} onChange={e=>change({...v,name:e.target.value})}/></label><label>Distance / description<input value={v.detail} onChange={e=>change({...v,detail:e.target.value})}/></label></>}/>
+  </div>}
+       {activeSection==='landmarks'&&<div className="accom-fields-group"><RepeatableField title="Nearby landmarks" items={form.landmarks} create={()=>({name:'',detail:''})} onChange={v=>set('landmarks',v)} describe={v=>v.name||'New landmark'} render={(v,change)=><><label>Landmark<input value={v.name} onChange={e=>change({...v,name:e.target.value})}/></label><label>Distance / description<input value={v.detail} onChange={e=>change({...v,detail:e.target.value})}/></label></>}/>
   <RepeatableField title="Floor plans" items={form.floorplans} create={()=>({url:'',alt:'',category:'Floor plan',layout:'regular' as const})} onChange={v=>set('floorplans',v)} describe={(v,i)=>v.alt||`Floor plan ${i+1}`} render={(v,change)=>media(v,change,'Floor plan')}/>
-  <RepeatableField title="Offers" items={form.offers} create={()=>({title:'',description:'',valid_until:''})} onChange={v=>set('offers',v)} describe={v=>v.title||'New offer'} render={(v,change)=><><label>Offer title<input value={v.title} onChange={e=>change({...v,title:e.target.value})}/></label><label>Description<textarea rows={2} value={v.description} onChange={e=>change({...v,description:e.target.value})}/></label><label>Valid until<input type="date" value={v.valid_until||''} onChange={e=>change({...v,valid_until:e.target.value})}/></label></>}/>
+  </div>}
+       {activeSection==='offers'&&<div className="accom-fields-group"><RepeatableField title="Offers" items={form.offers} create={()=>({title:'',description:'',valid_until:''})} onChange={v=>set('offers',v)} describe={v=>v.title||'New offer'} render={(v,change)=><><label>Offer title<input value={v.title} onChange={e=>change({...v,title:e.target.value})}/></label><label>Description<textarea rows={2} value={v.description} onChange={e=>change({...v,description:e.target.value})}/></label><label>Valid until<input type="date" value={v.valid_until||''} onChange={e=>change({...v,valid_until:e.target.value})}/></label></>}/>
   <RepeatableField title="Reviews" items={form.reviews} create={()=>({name:'',quote:'',source_url:''})} onChange={v=>set('reviews',v)} describe={v=>v.name||'New review'} help="Only enter reviews you are authorised to publish." render={(v,change)=><><label>Reviewer<input value={v.name} onChange={e=>change({...v,name:e.target.value})}/></label><label>Review<textarea rows={2} value={v.quote} onChange={e=>change({...v,quote:e.target.value})}/></label><label>Source URL<input type="url" value={v.source_url} onChange={e=>change({...v,source_url:e.target.value})}/></label></>}/>
   <label>Original review-source URL<input type="url" value={form.review_source_url||''} onChange={e=>set('review_source_url',e.target.value)}/></label>
   <div className="form-grid"><label>Source rating (0–5)<input type="number" min="0" max="5" step=".1" value={form.review_score??''} onChange={e=>set('review_score',e.target.value?Number(e.target.value):null)}/></label><label>Number of source reviews<input type="number" min="0" value={form.review_count??''} onChange={e=>set('review_count',e.target.value?Number(e.target.value):null)}/></label></div>
-  <h3 id="publishing">Search &amp; publishing</h3><label>Page slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Auto-created from name"/></label><label>SEO title<input value={form.seo_title||''} onChange={e=>set('seo_title',e.target.value)}/></label><label>Meta description<textarea rows={2} value={form.meta_description||''} onChange={e=>set('meta_description',e.target.value)}/></label>
+  </div>}
+       {activeSection==='seo'&&<div className="accom-fields-group"><label>Page slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Auto-created from name"/></label><label>SEO title<input value={form.seo_title||''} onChange={e=>set('seo_title',e.target.value)}/></label><label>Meta description<textarea rows={2} value={form.meta_description||''} onChange={e=>set('meta_description',e.target.value)}/></label>
   <p className="editor-publish-note">Save this page as a draft. An administrator can publish it from All Pages after completing the checklist.</p>
   <label className="checkline"><input type="checkbox" checked={!!form.noindex} onChange={e=>set('noindex',e.target.checked)}/> Noindex this listing</label>
-  {error&&<p className="error">{error}</p>}<div className="drawer-footer editor-sticky-footer"><button type="button" className="outline" onClick={safeClose}>Cancel</button><button type="button" className="outline" onClick={()=>setPreviewDraft(true)}>Preview</button><button className="primary" disabled={busy}>{busy?'Saving…':'Save property'} <Check size={15}/></button></div>
- </form></div></div>
+</div>}
+      </div>
+     </main>
+     <section className="accom-editor-preview" aria-label="Live property preview">
+      <div className="accom-editor-preview-head"><div><span className="eyebrow">LIVE PREVIEW</span><h3>Approved property design</h3><small>Actual template · unsaved changes</small></div>
+       <div className="accom-editor-device-toggle" aria-label="Preview viewport"><button type="button" aria-pressed={previewMode==='desktop'} className={previewMode==='desktop'?'active':''} onClick={()=>setPreviewMode('desktop')}>Desktop</button><button type="button" aria-pressed={previewMode==='mobile'} className={previewMode==='mobile'?'active':''} onClick={()=>setPreviewMode('mobile')}>Mobile</button></div>
+      </div>
+      <div className="accom-editor-preview-viewport" ref={previewContainerRef}>
+       {previewHtml?<div className={'accom-editor-preview-paper '+(previewMode==='mobile'?'mobile':'desktop')} style={{width:previewWidth*previewScale,height:1020*previewScale}}>
+         <iframe ref={previewFrameRef} title="Live property page visual preview" sandbox="allow-scripts allow-same-origin" srcDoc={previewHtml} style={{width:previewWidth,height:1020,transform:'scale('+previewScale+')',transformOrigin:'top left'}} onLoad={e=>{try{const target=({essentials:'#overview',gallery:'.gallery-grid',highlights:'#included',policies:'#policies',landmarks:'.overview-landmarks',offers:'.cta-quickfacts',seo:'body'} as Record<string,string>)[activeSection];e.currentTarget.contentDocument?.querySelector(target)?.scrollIntoView({block:'start',behavior:'instant'})}catch{}}}/>
+        </div>:<div className="accom-editor-preview-empty"><ImageIcon size={30}/><strong>{source?'Preparing your property preview':'Save a draft to start previewing'}</strong><p>Updates will appear in the original Accom page layout.</p></div>}
+      </div>
+      <div className="accom-editor-preview-foot">{previewError&&<span className="accom-editor-preview-error" role="alert">{previewError}</span>}{previewLoading&&<span aria-live="polite">Updating preview…</span>}<button type="button" className="outline" onClick={openFullPreview} disabled={!previewHtml}>Open full preview <ArrowRight size={15}/></button></div>
+     </section>
+    </div>
+    <footer className="drawer-footer accom-editor-footer">
+     <div><strong>{dirty?'Unsaved changes':'All changes saved'}</strong><small>Editing affects only this page. Save to store your changes in Category.</small></div>
+     <div className="accom-editor-footer-actions"><button type="button" className="outline" onClick={safeClose}>Cancel</button><button type="button" className="outline" onClick={openFullPreview} disabled={!previewHtml}>Preview</button><button type="submit" className="primary" disabled={busy}>{busy?'Saving…':'Save draft'} <Check size={16}/></button></div>
+     {error&&<p className="error" role="alert">{error}</p>}
+    </footer>
+   </form>
+  </div>
+ </div>
 }
+
 function RoomManager({p,close,saved,current,setCurrent}:{p:Property;close:()=>void;saved:()=>void;current:Room|null;setCurrent:(r:Room|null)=>void}){const [form,setForm]=useState({...blankRoom,...(current||{})}),[error,setError]=useState(''),[busy,setBusy]=useState(false);const set=(k:string,v:unknown)=>setForm(f=>({...f,[k]:v}));const submit=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true);setError('');try{await api(current?'/api/admin/rooms/'+current.id:'/api/admin/properties/'+p.id+'/rooms',{method:current?'PATCH':'POST',body:JSON.stringify({...form,edit_version:current?.edit_version??null,parent_edit_version:p.edit_version})});saved()}catch(e){setError((e as Error).message)}finally{setBusy(false)}};return <div className="drawer-shade"><div className="drawer" role="dialog" aria-modal="true" aria-label="Room editor"><div className="drawer-header"><div><span className="eyebrow">ROOM INVENTORY · {p.name}</span><h2>{current?'Edit room':'Manage room types'}</h2></div><button onClick={close}><X/></button></div><div className="room-pickers">{p.rooms?.map(r=><button key={r.id} onClick={()=>{setCurrent(r);setForm({...blankRoom,...r})}}>{r.name} · {money(r.price,r.currency,r.price_period)} <ArrowRight size={12}/></button>)}</div><form className="drawer-form" onSubmit={submit}><h3>{current?'Edit this room':'Add a new room'}</h3><label>Room name<input required minLength={2} value={form.name} onChange={e=>set('name',e.target.value)}/></label><div className="form-grid"><label>Room category<select value={form.room_type} onChange={e=>set('room_type',e.target.value)}><option>En suite</option><option>Studio</option><option>Shared</option><option>Apartment</option></select></label><label>Availability<select value={form.availability} onChange={e=>set('availability',e.target.value)}><option value="enquire">Confirm on enquiry</option><option value="available">Available</option><option value="unavailable">Unavailable</option></select></label><label>Price<input type="number" min="0" step=".01" value={form.price??''} onChange={e=>set('price',e.target.value?Number(e.target.value):null)}/></label><label>Currency<input value={form.currency} maxLength={3} onChange={e=>set('currency',e.target.value.toUpperCase())}/></label><label>Rate period<select value={form.price_period} onChange={e=>set('price_period',e.target.value)}><option value="week">Per week</option><option value="month">Per month</option></select></label><label>Rate checked on<input type="date" value={form.rate_checked_at||''} onChange={e=>set('rate_checked_at',e.target.value||null)}/></label><label>Available from<input type="date" value={form.available_from||''} onChange={e=>set('available_from',e.target.value||null)}/></label><label>Size in m²<input type="number" min="0" step=".01" value={form.size_sqm??''} onChange={e=>set('size_sqm',e.target.value?Number(e.target.value):null)}/></label><label>Bathroom<input value={form.bathroom} onChange={e=>set('bathroom',e.target.value)}/></label><label>Kitchen<input value={form.kitchen} onChange={e=>set('kitchen',e.target.value)}/></label></div><label>Description<textarea rows={3} value={form.details} onChange={e=>set('details',e.target.value)}/></label><label>Room image URL<input value={form.image_url} onChange={e=>set('image_url',e.target.value)}/></label><label>Or upload a room photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;try{set('image_url',await uploadPhoto(f))}catch(err){setError((err as Error).message)}}}/></label><label>Image description (alt text)<input value={form.image_alt||''} onChange={e=>set('image_alt',e.target.value)}/></label><fieldset className="image-layout-switch"><legend>Room image appearance</legend><div className="layout-switch">{(['regular','large'] as const).map(v=><button type="button" className={form.image_layout===v?'selected':''} onClick={()=>set('image_layout',v)} key={v}>{v==='regular'?'Regular':'Large'}</button>)}</div></fieldset><TenancyEditor value={form.tenancies||[]} onChange={value=>set('tenancies',value)}/><label>Rate source URL<input value={form.source_url} onChange={e=>set('source_url',e.target.value)}/></label><label className="checkline"><input type="checkbox" checked={form.active} onChange={e=>set('active',e.target.checked)}/> Active room listing</label>{error&&<p className="error">{error}</p>}<div className="drawer-footer editor-sticky-footer"><button type="button" className="outline" onClick={close}>Close</button><button className="primary" disabled={busy}>{busy?'Saving…':'Save room'}</button></div></form></div></div>}
 function Support({go}:{go:(s:string)=>void}){return <main className="wrap support-page"><span className="eyebrow">STUDENT SUPPORT</span><h1>Need help finding your accommodation?</h1><p>Open a property to send your enquiry directly to the Accom team. If you have an account, you can track its progress in your student portal.</p><div className="quick-actions"><button className="primary" onClick={()=>go('/')}>Explore accommodation</button><button className="outline" onClick={()=>go('/student')}>My student portal</button></div></main>}
 function VerifyEmailPage({go}:{go:(s:string)=>void}){const [text,setText]=useState('Checking verification…');useEffect(()=>{const code=new URLSearchParams(window.location.search).get('token');if(!code){setText('Verification token missing.');return}api('/api/auth/verify-email',{method:'POST',body:JSON.stringify({token:code})}).then(()=>setText('Your email is verified. You can now sign in.')).catch(e=>setText(e.message))},[]);return <main className="wrap support-page"><h1>Email verification</h1><p>{text}</p><button className="primary" onClick={()=>go('/login')}>Go to sign in</button></main>}
