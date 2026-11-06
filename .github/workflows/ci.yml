@@ -16,6 +16,9 @@ jobs:
       - name: Exercise directory, auth, enquiry and student journeys
         working-directory: apps/api
         run: python -m pytest -q
+      - name: Verify database migrations (fresh install)
+        working-directory: apps/api
+        run: DATABASE_URL=sqlite:///./migration-ci.db python -m alembic upgrade head
   web:
     runs-on: ubuntu-latest
     steps:
@@ -28,3 +31,6 @@ jobs:
       - name: Typecheck and build
         working-directory: apps/web
         run: npm run build
+      - name: Test live property-template data adapter
+        working-directory: apps/web
+        run: node --test tests/template-data.test.mjs

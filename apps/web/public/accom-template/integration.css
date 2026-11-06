@@ -1,0 +1,9 @@
+
+/* Native property template integration: visual changes restricted to dynamic state. */
+.accom-demo-banner{position:relative;z-index:100;background:#fff3df;color:#603e16;
+border-bottom:1px solid #f1d4ad;padding:10px 20px;text-align:center;
+font:700 12px/1.5 Montserrat,Arial,sans-serif;letter-spacing:.035em}
+.gallery-grid.single-photo{grid-template-columns:1fr!important}
+.gallery-grid.single-photo>.gallery-tile{grid-column:1/-1!important}
+.gallery-tile[hidden]{display:none!important}
+@media(max-width:720px){.accom-demo-banner{font-size:11px;padding:8px 15px}}

@@ -48,6 +48,7 @@ services:
       S3_BUCKET: accom-assets
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       LOCAL_DEMO_MODE: ${LOCAL_DEMO_MODE:-0}
+      SEED_ACCOM_DEMO: ${SEED_ACCOM_DEMO:-0}
       DEMO_ADMIN_USERNAME: ${DEMO_ADMIN_USERNAME:-}
       DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-}
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://accombyemlen.com}

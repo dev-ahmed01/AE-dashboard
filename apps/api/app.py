@@ -30,6 +30,8 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint, create_engine, func, or_, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
+from property_runtime import render_property
+from demo_seed import seed_kingston
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./accom-local.db')
 JWT_SECRET = os.getenv('JWT_SECRET', '')
@@ -102,6 +104,7 @@ class Property(Base):
     published: Mapped[bool] = mapped_column(Boolean, default=False)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
     edit_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     rooms: Mapped[list['Room']] = relationship(back_populates='property', cascade='all, delete-orphan')
@@ -126,6 +129,7 @@ class Room(Base):
     image_url: Mapped[str] = mapped_column(Text, default='')
     image_alt: Mapped[str] = mapped_column(String(240), default='')
     image_layout: Mapped[str] = mapped_column(String(15), default='regular')
+    tenancies: Mapped[list] = mapped_column(JSON,default=list,nullable=False)
     edit_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     property: Mapped[Property] = relationship(back_populates='rooms')
@@ -289,6 +293,10 @@ def startup():
         elif demo and demo.active:
             demo.active=False;demo.auth_version+=1;db.commit()
 
+    if APP_ENVIRONMENT=='development' and os.getenv('SEED_ACCOM_DEMO')=='1':
+        with SessionLocal() as db:
+            seed_kingston(db,Property,Room)
+
 def get_db():
     with SessionLocal() as db:
         yield db
@@ -329,7 +337,7 @@ def user_json(u):
     return {'id':u.id,'name':u.name,'email':u.email,'username':u.username,'role':u.role,'active':u.active,'email_verified':u.email_verified}
 
 def room_json(r):
-    return {'id':r.id,'property_id':r.property_id,'name':r.name,'room_type':r.room_type,'details':r.details,'size_sqm':float(r.size_sqm) if r.size_sqm is not None else None,'kitchen':r.kitchen,'bathroom':r.bathroom,'price':float(r.price) if r.price is not None else None,'currency':r.currency,'price_period':r.price_period,'available_from':r.available_from.isoformat() if r.available_from else None,'availability':r.availability,'rate_checked_at':r.rate_checked_at.isoformat() if r.rate_checked_at else None,'source_url':r.source_url,'image_url':r.image_url,'image_alt':r.image_alt,'image_layout':r.image_layout,'edit_version':r.edit_version,'active':r.active}
+    return {'id':r.id,'property_id':r.property_id,'name':r.name,'room_type':r.room_type,'details':r.details,'size_sqm':float(r.size_sqm) if r.size_sqm is not None else None,'kitchen':r.kitchen,'bathroom':r.bathroom,'price':float(r.price) if r.price is not None else None,'currency':r.currency,'price_period':r.price_period,'available_from':r.available_from.isoformat() if r.available_from else None,'availability':r.availability,'rate_checked_at':r.rate_checked_at.isoformat() if r.rate_checked_at else None,'source_url':r.source_url,'image_url':r.image_url,'image_alt':r.image_alt,'image_layout':r.image_layout,'tenancies':r.tenancies or [],'edit_version':r.edit_version,'active':r.active}
 
 def _public_rooms(p):
     return [r for r in p.rooms if r.active and r.availability != 'unavailable']
@@ -346,7 +354,7 @@ def _headline_rate(p):
 def prop_json(p, detail=False, staff=False):
     rooms=[room_json(r) for r in p.rooms if staff or (r.active and r.availability!='unavailable')]
     price,currency,period,note=_headline_rate(p)
-    d={'id':p.id,'name':p.name,'slug':p.slug,'city':p.city,'country':p.country,'address':p.address,'postcode':p.postcode,'university':p.university,'description':p.description,'gallery':p.gallery,'published':p.published,'archived':p.archived,'edit_version':p.edit_version,'verified_at':p.verified_at.isoformat() if p.verified_at else None,'from_price':price,'price_note':note,'currency':currency,'price_period':period}
+    d={'id':p.id,'name':p.name,'slug':p.slug,'city':p.city,'country':p.country,'address':p.address,'postcode':p.postcode,'university':p.university,'description':p.description,'gallery':p.gallery,'published':p.published,'archived':p.archived,'is_demo':p.is_demo,'edit_version':p.edit_version,'verified_at':p.verified_at.isoformat() if p.verified_at else None,'from_price':price,'price_note':note,'currency':currency,'price_period':period}
     if detail:d.update({'highlights':p.highlights,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'rooms':rooms})
     return d
 
@@ -373,7 +381,7 @@ class MediaInput(BaseModel):
     @field_validator('url')
     @classmethod
     def valid_web_image(cls, value: str):
-        if not (re.fullmatch(r'https://[^\s]+', value) or re.fullmatch(r'/api/media/[1-9][0-9]*',value)):
+        if not (re.fullmatch(r'https://[^\s]+', value) or re.fullmatch(r'/api/media/[1-9][0-9]*',value) or re.fullmatch(r'/accom-template/assets/[a-z0-9_-]+\.(?:webp|png|jpg)',value)):
             raise ValueError('Use an HTTPS image URL or an image from the Accom media library')
         return value
 
@@ -418,7 +426,16 @@ class PropertyInput(BaseModel):
     meta_description: str = ''
     noindex: bool = False
     published: bool = False
+    is_demo: bool = False
     edit_version: int | None = Field(default=None,ge=1)
+class TenancyInput(BaseModel):
+    weeks: int = Field(ge=0,le=104)
+    start: str = Field(default='',max_length=80)
+    end: str = Field(default='',max_length=80)
+    weekly: Decimal | None = Field(default=None,ge=0)
+    availability: str = Field(default='Confirm availability',max_length=100)
+    illustrative: bool = False
+
 class RoomInput(BaseModel):
     name: str = Field(min_length=2,max_length=180)
     room_type: str = 'En suite'
@@ -436,6 +453,7 @@ class RoomInput(BaseModel):
     image_url: str = ''
     image_alt: str = Field(default='',max_length=240)
     image_layout: Literal['regular','large'] = 'regular'
+    tenancies: list[TenancyInput] = Field(default_factory=list,max_length=12)
     edit_version: int | None = Field(default=None,ge=1)
     parent_edit_version: int | None = Field(default=None,ge=1)
     active: bool = True
@@ -465,6 +483,9 @@ def _require_publish_ready(p, db):
     if not p.address or len(p.address.strip())<5:errors.append('Property address')
     if not p.description or len(p.description.strip())<25:errors.append('Description (at least 25 characters)')
     if not p.gallery:errors.append('At least one approved property photo')
+    if p.is_demo:errors.append('Convert demonstration listing to verified property before publishing')
+    if any(t.get('illustrative') for r in p.rooms for t in (r.tenancies or [])):
+        errors.append('Illustrative tenancy prices cannot be published')
     rooms=db.scalars(select(Room).where(Room.property_id==p.id,Room.active.is_(True))).all()
     if not rooms:errors.append('At least one active room')
     if errors:raise HTTPException(422,'Complete before publishing: '+', '.join(errors))
@@ -661,6 +682,7 @@ def _serialize_data(model):
 def _as_db(model):
     data=model.model_dump(exclude={'edit_version','parent_edit_version'})
     if isinstance(model,PropertyInput):data['offers']=[o.model_dump(mode='json') for o in model.offers]
+    if isinstance(model,RoomInput):data['tenancies']=[t.model_dump(mode='json') for t in model.tenancies]
     return data
 
 class NewPropertyDraft(BaseModel):
@@ -854,19 +876,38 @@ def update_cashback(id:int,data:CashbackInput,user:User=Depends(require_manager)
     log(db,user,'cashback.update',str(c.id));db.commit();return {'id':c.id,'status':c.status}
 
 
-def _seo_page_html(p):
-    title=escape(p.seo_title or p.name+' | Accom by Emlen',quote=True)
-    desc=escape(p.meta_description or p.description[:160],quote=True)
-    url=PUBLIC_SITE_URL+'/property/'+quote(p.slug)
-    robots='noindex,nofollow' if p.noindex else 'index,follow'
-    metadata=json.dumps({'@context':'https://schema.org','@type':'ApartmentComplex','name':p.name,'address':{'@type':'PostalAddress','streetAddress':p.address,'addressLocality':p.city,'addressCountry':p.country},'url':url}).replace('<','\\u003c')
-    return f'''<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>{title}</title><meta name="description" content="{desc}"/><meta name="robots" content="{robots}"/><link rel="canonical" href="{escape(url,quote=True)}"/><meta property="og:title" content="{title}"/><meta property="og:description" content="{desc}"/><meta property="og:url" content="{escape(url,quote=True)}"/><meta property="og:type" content="website"/><script type="application/ld+json">{metadata}</script><link rel="stylesheet" href="/assets/app.css"/><script type="module" crossorigin src="/assets/app.js"></script></head><body><div id="root"></div></body></html>'''
+def _seo_page_html(p,preview=False):
+    return render_property(p,prop_json(p,detail=True,staff=preview),PUBLIC_SITE_URL,preview=preview)
 
 @app.get('/property/{slug}',response_class=HTMLResponse)
-def seo_property(slug:str,db:Session=Depends(get_db)):
-    p=db.scalar(select(Property).where(Property.slug==slug,Property.published.is_(True),Property.archived.is_(False)))
+def seo_property(slug:str,preview_token:str|None=None,db:Session=Depends(get_db)):
+    p=db.scalar(select(Property).where(Property.slug==slug))
     if not p:raise HTTPException(404,'Page not found')
-    return HTMLResponse(_seo_page_html(p),headers={'Cache-Control':'public, max-age=60'})
+    preview=False
+    if preview_token:
+        try:
+            claim=jwt.decode(preview_token,JWT_SECRET,algorithms=['HS256'])
+            user=db.get(User,int(claim['sub']))
+            preview=(claim.get('scope')=='accom-property-preview' and claim.get('property_id')==p.id
+                and user is not None and user.active and user.role in ('admin','editor')
+                and user.auth_version==claim.get('av'))
+        except Exception:preview=False
+    if not preview and (not p.published or p.archived):raise HTTPException(404,'Page not found')
+    return HTMLResponse(_seo_page_html(p,preview),headers={
+       'Cache-Control':'no-store' if preview else 'public, max-age=60',
+       'Referrer-Policy':'no-referrer' if preview else 'strict-origin-when-cross-origin',
+       'X-Robots-Tag':'noindex, nofollow' if preview or p.noindex else 'index,follow',
+       'Content-Security-Policy':"script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'"})
+
+@app.post('/api/admin/properties/{id}/preview-link')
+def property_preview_link(id:int,user:User=Depends(require_admin),db:Session=Depends(get_db)):
+    p=db.get(Property,id)
+    if not p:raise HTTPException(404,'Page not found')
+    preview_token=jwt.encode({'sub':str(user.id),'scope':'accom-property-preview',
+        'property_id':p.id,'av':user.auth_version,
+        'exp':datetime.now(timezone.utc)+timedelta(minutes=5)},JWT_SECRET,algorithm='HS256')
+    return {'url':'/property/'+quote(p.slug)+'?preview_token='+quote(preview_token),
+        'expires_in_seconds':300}
 
 @app.get('/sitemap.xml',response_class=HTMLResponse)
 def sitemap(db:Session=Depends(get_db)):
