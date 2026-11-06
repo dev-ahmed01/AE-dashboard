@@ -70,6 +70,7 @@ try {
   },null,{timeout:20000});
 
   await page.setViewportSize({width:390,height:844});
+  await page.waitForFunction(()=>document.querySelector('.accom-editor-device-toggle button:last-child')?.getAttribute('aria-pressed')==='true',{timeout:10000});
   await page.getByRole('button',{name:/02 Property photos/}).click();
   await page.locator('.accom-editor-preview').scrollIntoViewIfNeeded();
   await page.screenshot({path:'qa/evidence/editor-mobile.png'});
