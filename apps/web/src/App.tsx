@@ -261,6 +261,13 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
   catch(err){setError((err as Error).message)}finally{setBusy(false)}
  }
 
+ useEffect(()=>{
+  const query=window.matchMedia('(max-width:620px)')
+  const update=()=>{if(query.matches)setPreviewMode('mobile')}
+  update()
+  query.addEventListener('change',update)
+  return()=>query.removeEventListener('change',update)
+ },[])
  const sections=[
   {id:'essentials',title:'Property essentials',desc:'Identity, address and introduction',index:'01'},
   {id:'gallery',title:'Property photos',desc:'Gallery layout and image sizing',index:'02'},
