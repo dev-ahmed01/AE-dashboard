@@ -60,7 +60,7 @@ def test_other_property_has_no_kingston_specific_public_facts():
     assert not dom.select('.section-nav a[href="#house-rules"]')
     assert not dom.select(".related-section")
     assert dom.select_one(".cta-google-map")["title"] == "Map showing " + p.name
-    assert p.address in dom.select_one(".cta-google-map")["src"]
+    assert "10%20Example%20Street" in dom.select_one(".cta-google-map")["src"]
     assert dom.select_one("#cta-from-price").get_text(strip=True) == "£415"
     assert dom.select_one(".cta-price-hero .cta-overview-value span").get_text(strip=True) == "/ week"
     assert dom.select_one('meta[name="robots"]')["content"] == "noindex,nofollow"
