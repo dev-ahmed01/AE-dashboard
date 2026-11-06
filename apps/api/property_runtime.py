@@ -28,7 +28,22 @@ def render_property(p, payload, public_site_url, preview=False):
     fill('.address',', '.join(x for x in [p.address,p.postcode,p.city] if x))
     fill('.cta-property-title h2',p.name)
     fill('.cta-address',', '.join(x for x in [p.address,p.postcode,p.city] if x))
-    fill('.cta-kicker','STUDENT LIVING · '+p.city.upper())
+    fill('.cta-kicker','STUDENT LIVING · '+(p.city or 'UK').upper())
+    # Keep the design, but never leak the prototype's property-specific copy.
+    fill('#overview .overview-priority-intro p:last-of-type',p.description)
+    fill('.access-section p','Tell us your accessibility requirements. Ask the accommodation provider to confirm step-free access, lift dimensions and room specifications before booking.')
+    verified_mark=soup.select_one('.verified-mark')
+    if verified_mark:
+        verified_mark['title']='Accommodation details require provider confirmation'
+        verified_mark['aria-label']='Check current property details with the provider'
+    cta_verified=soup.select_one('.cta-verified')
+    if cta_verified:cta_verified['title']='Confirm details with accommodation provider'
+    if not p.is_demo:
+        # No provider-sourced house rules are stored yet; do not display
+        # unverified prototype rules or Kingston-specific related content.
+        for selector in ('#house-rules','.section-nav a[href="#house-rules"]','.related-section'):
+            el=soup.select_one(selector)
+            if el:el.decompose()
     fill('.verified-copy','Demo sample' if p.is_demo else 'Details to confirm')
     fill('.overview-footnote','Illustrative room rates and photography; verify availability.' if p.is_demo
          else 'Confirm room specifications and current contract details before booking.')
@@ -38,10 +53,16 @@ def render_property(p, payload, public_site_url, preview=False):
          else 'Accommodation enquiries only. No rent collected.')
     fill('#enquiry-dialog .enquiry-visual p','Ask us to confirm room availability and contract terms. This is an enquiry, not a booking.')
     fill('.cta-price-hero small','Illustrative from' if p.is_demo else 'Rooms from')
-    fill('#cta-from-price','Price on request' if not payload.get('from_price')
-         else '£'+str(round(payload['from_price'])))
-    fill('#mobile-price','Price on request' if not payload.get('from_price')
-         else 'From £'+str(round(payload['from_price']))+'/wk')
+    price=payload.get('from_price')
+    currency=payload.get('currency') or 'GBP'
+    period=payload.get('price_period') or 'week'
+    symbol={'GBP':'£','EUR':'€','USD':'$'}.get(currency,currency+' ')
+    amount=('Price on request' if price is None else symbol+f'{float(price):,.0f}')
+    fill('#cta-from-price',amount)
+    fill('#mobile-price','Price on request' if price is None else
+         'From '+amount+('/mo' if period=='month' else '/wk'))
+    period_badge=soup.select_one('.cta-price-hero .cta-overview-value span')
+    if period_badge:period_badge.string=('/ '+period if price is not None else '')
     for i,node in enumerate(soup.select('.overview-highlight')):
         if i>=len(p.highlights or []):
             node.decompose()
@@ -86,24 +107,47 @@ def render_property(p, payload, public_site_url, preview=False):
     if soup.select_one('.cta-google-map'):
         query=', '.join(x for x in [p.address,p.city,p.postcode] if x)
         from urllib.parse import quote as urlquote
-        soup.select_one('.cta-google-map')['src']='https://maps.google.com/maps?q='+urlquote(query)+'&z=16&output=embed'
+        map_node=soup.select_one('.cta-google-map')
+        map_node['src']='https://maps.google.com/maps?q='+urlquote(query)+'&z=16&output=embed'
+        map_node['title']='Map showing '+p.name
+        map_card=soup.select_one('.cta-google-map-card')
+        if map_card:map_card['aria-label']='Map of '+p.name
+        directions=soup.select_one('.cta-google-map-caption a')
+        if directions:
+            directions['href']='https://www.google.com/maps/search/?api=1&query='+urlquote(query)
+            directions['aria-label']='Open '+p.name+' location in Google Maps'
     fill('.cta-google-map-place strong',p.name)
     fill('.cta-google-map-place small',p.address)
-    for i,el in enumerate(soup.select('.gallery-tile')):
-        images=p.gallery or []
-        if i>=len(images):el.decompose();continue
-        img=el.find('img')
-        if img:
-            img['src']=images[i].get('url','')
-            img['alt']=images[i].get('alt','Property photo')
-        el['data-gallery-index']=str(i)
-        el['class']=[c for c in el.get('class',[]) if c!='gallery-main']
-        if images[i].get('layout')=='large':el['class'].append('gallery-main')
+    gallery=soup.select_one('.gallery-grid')
+    images=p.gallery or []
+    if gallery:
+        existing=list(gallery.select('.gallery-tile'))
+        for i,item in enumerate(images):
+            if i<len(existing):
+                el=existing[i]
+            else:
+                # Every uploaded image appears in the mosaic AND lightbox.
+                el=soup.new_tag('button',attrs={'class':'gallery-tile','type':'button'})
+                el.append(soup.new_tag('img',attrs={'loading':'lazy','decoding':'async'}))
+                gallery.append(el)
+            img=el.find('img')
+            if img:
+                img['src']=item.get('url','')
+                img['alt']=item.get('alt','Property photo')
+            el['data-gallery-index']=str(i)
+            el['aria-label']='Open '+item.get('alt','property photo')+' in gallery'
+            el['class']=[c for c in el.get('class',[]) if c!='gallery-main']
+            if item.get('layout')=='large':el['class'].append('gallery-main')
+        for el in existing[len(images):]:el.decompose()
+        if len(images)==1:gallery['class'].append('single-photo')
     fill('#view-gallery','View all '+str(len(p.gallery or []))+' photos')
     image=soup.select_one('#lightbox-image')
-    if image and p.gallery:
-        image['src']=p.gallery[0].get('url','')
-        image['alt']=p.gallery[0].get('alt','Property photo')
+    if image:
+        image['src']=images[0].get('url','') if images else ''
+        image['alt']=images[0].get('alt','Property photo') if images else 'No photographs available'
+    if not images:
+        all_photos=soup.select_one('#view-gallery')
+        if all_photos:all_photos['disabled']=''
     # Replace fixed prototype addresses/text in remaining incidental labels.
     for text_node in soup.find_all(string=True):
         if text_node.parent.name in ('script','style'):continue
