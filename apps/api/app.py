@@ -31,6 +31,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numer
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 from property_runtime import render_property
+from editor_preview import render_draft
 from demo_seed import seed_kingston
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./accom-local.db')
@@ -878,6 +879,25 @@ def update_cashback(id:int,data:CashbackInput,user:User=Depends(require_manager)
 
 def _seo_page_html(p,preview=False):
     return render_property(p,prop_json(p,detail=True,staff=preview),PUBLIC_SITE_URL,preview=preview)
+
+@app.post('/api/admin/properties/{id}/preview-draft',response_class=HTMLResponse)
+def preview_unsaved_property(id:int, data:dict, user:User=Depends(require_admin), db:Session=Depends(get_db)):
+    """Render the actual approved template with the unsaved editor values.
+
+    This endpoint is for staff only, never writes to the database and always
+    disables indexing and public enquiries.
+    """
+    p=db.get(Property,id)
+    if not p:raise HTTPException(404,'Page not found')
+    if len(json.dumps(data,ensure_ascii=False))>150000:
+        raise HTTPException(413,'Preview content is too large')
+    html=render_draft(p,data,prop_json(p,detail=True,staff=True),PUBLIC_SITE_URL)
+    return HTMLResponse(html,headers={
+        'Cache-Control':'no-store',
+        'X-Robots-Tag':'noindex, nofollow',
+        'Content-Security-Policy':"script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'",
+    })
+
 
 @app.get('/property/{slug}',response_class=HTMLResponse)
 def seo_property(slug:str,preview_token:str|None=None,db:Session=Depends(get_db)):

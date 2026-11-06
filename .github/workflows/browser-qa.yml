@@ -1,0 +1,75 @@
+name: Category editor browser QA
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "apps/api/**"
+      - ".github/workflows/browser-qa.yml"
+  workflow_dispatch:
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: sqlite:///./browser-qa.db
+      JWT_SECRET: browser-test-secret-32-characters-only-not-for-production
+      ADMIN_EMAIL: admin@example.test
+      ADMIN_PASSWORD: browser-test-password-2026
+      APP_ENVIRONMENT: development
+      LOCAL_DEMO_MODE: "1"
+      DEMO_ADMIN_USERNAME: Admin
+      DEMO_ADMIN_PASSWORD: Admin@123
+      SEED_ACCOM_DEMO: "1"
+      CORS_ORIGIN: http://127.0.0.1:5173
+      PUBLIC_SITE_URL: http://127.0.0.1:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install API and migrate the clean browser test database
+        working-directory: apps/api
+        run: |
+          pip install -r requirements.txt
+          python -m alembic upgrade head
+      - name: Start API
+        run: |
+          (cd apps/api && uvicorn app:app --host 127.0.0.1 --port 8000 > /tmp/accom-api-browser.log 2>&1) &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:8000/api/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/accom-api-browser.log
+          exit 1
+      - name: Install frontend and browser
+        working-directory: apps/web
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start Vite server
+        run: |
+          (cd apps/web && npm run dev -- --host 127.0.0.1 --port 5173 > /tmp/accom-vite-browser.log 2>&1) &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/accom-vite-browser.log
+          exit 1
+      - name: Exercise Category editor in desktop and mobile Chromium
+        working-directory: apps/web
+        run: node qa/editor-browser.mjs
+      - name: Preserve visual evidence and server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accom-category-editor-browser-evidence
+          if-no-files-found: ignore
+          path: |
+            apps/web/qa/evidence/
+            /tmp/accom-api-browser.log
+            /tmp/accom-vite-browser.log
