@@ -35,6 +35,11 @@ DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./accom-local.db')
 JWT_SECRET = os.getenv('JWT_SECRET', '')
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', '')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', '')
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', '')
+LOCAL_DEMO_MODE = os.getenv('LOCAL_DEMO_MODE', '0') == '1'
+DEMO_ADMIN_USERNAME = os.getenv('DEMO_ADMIN_USERNAME', 'Admin')
+DEMO_ADMIN_PASSWORD = os.getenv('DEMO_ADMIN_PASSWORD', '')
+DEMO_ADMIN_EMAIL = 'demo-admin@accom.example'
 CORS_ORIGIN = os.getenv('CORS_ORIGIN', 'http://localhost:5173')
 PUBLIC_SITE_URL = os.getenv('PUBLIC_SITE_URL', 'https://accombyemlen.com').rstrip('/')
 APP_ENVIRONMENT = os.getenv('APP_ENVIRONMENT','development')
@@ -59,6 +64,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(150))
     email: Mapped[str] = mapped_column(String(250), unique=True, index=True)
+    username: Mapped[str | None] = mapped_column(String(40), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(String(30), default='student')
     active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -227,15 +233,61 @@ class Audit(Base):
 app = FastAPI(title='Accom by Emlen API', version='0.1.0')
 app.add_middleware(CORSMiddleware, allow_origins=[CORS_ORIGIN], allow_credentials=True, allow_methods=['GET','POST','PATCH','DELETE'], allow_headers=['Authorization','Content-Type'])
 
+def local_demo_enabled():
+    # Short demo credentials are never available in a production environment.
+    return (APP_ENVIRONMENT == 'development' and LOCAL_DEMO_MODE
+            and CORS_ORIGIN.rstrip('/') in ('http://localhost:8081','http://127.0.0.1:8081',
+                                            'http://localhost:5173','http://127.0.0.1:5173'))
+
+def clean_username(raw: str | None, *, reserved: bool = False) -> str | None:
+    if not raw: return None
+    name=raw.strip().lower()
+    if not re.fullmatch(r'[a-z][a-z0-9_.-]{2,31}',name):
+        raise HTTPException(422,'Username must have 3–32 characters and begin with a letter')
+    if not reserved and name in ('admin','administrator','root','system','support','accom'):
+        raise HTTPException(422,'This username is reserved')
+    return name
+
 @app.on_event('startup')
 def startup():
     if SQLITE or os.getenv('ALLOW_BOOTSTRAP_SCHEMA') == '1':
         Base.metadata.create_all(engine)  # tests/local only; production runs Alembic before start
     if ADMIN_EMAIL and ADMIN_PASSWORD and len(ADMIN_PASSWORD) >= 12:
         with SessionLocal() as db:
-            if not db.scalar(select(User).where(User.email==ADMIN_EMAIL.lower())):
-                db.add(User(name='Administrator',email=ADMIN_EMAIL.lower(),password_hash=ph.hash(ADMIN_PASSWORD),role='admin',email_verified=True))
+            main_admin=db.scalar(select(User).where(User.email==ADMIN_EMAIL.lower()))
+            if not main_admin:
+                username=clean_username(ADMIN_USERNAME,reserved=True)
+                if username and db.scalar(select(User).where(User.username==username)):
+                    raise RuntimeError('ADMIN_USERNAME already assigned to a different user')
+                db.add(User(name='Administrator',email=ADMIN_EMAIL.lower(),username=username,
+                            password_hash=ph.hash(ADMIN_PASSWORD),role='admin',email_verified=True))
                 db.commit()
+            elif ADMIN_USERNAME and main_admin.role=='admin' and not main_admin.username:
+                username=clean_username(ADMIN_USERNAME,reserved=True)
+                if not db.scalar(select(User).where(User.username==username)):
+                    main_admin.username=username
+                    db.commit()
+    # Demo account is explicitly local and becomes inactive outside demo mode.
+    with SessionLocal() as db:
+        demo=db.scalar(select(User).where(User.email==DEMO_ADMIN_EMAIL))
+        if local_demo_enabled():
+            username=clean_username(DEMO_ADMIN_USERNAME,reserved=True)
+            if not DEMO_ADMIN_PASSWORD or len(DEMO_ADMIN_PASSWORD)<8:
+                raise RuntimeError('DEMO_ADMIN_PASSWORD must have at least 8 characters')
+            clash=db.scalar(select(User).where(User.username==username))
+            if clash and (not demo or clash.id!=demo.id):
+                raise RuntimeError('Demo username already assigned to another user')
+            if not demo:
+                db.add(User(name='Local demo administrator',email=DEMO_ADMIN_EMAIL,
+                            username=username,password_hash=ph.hash(DEMO_ADMIN_PASSWORD),
+                            role='admin',email_verified=True))
+            else:
+                demo.username=username;demo.active=True
+                demo.password_hash=ph.hash(DEMO_ADMIN_PASSWORD)
+                demo.auth_version+=1
+            db.commit()
+        elif demo and demo.active:
+            demo.active=False;demo.auth_version+=1;db.commit()
 
 def get_db():
     with SessionLocal() as db:
@@ -249,6 +301,8 @@ def require_user(creds: HTTPAuthorizationCredentials | None = Depends(auth_schem
         user=db.get(User,int(payload['sub']))
         if not user or not user.active or payload.get('av') != user.auth_version:
             raise ValueError('inactive')
+        if user.email==DEMO_ADMIN_EMAIL and not local_demo_enabled():
+            raise ValueError('demo account disabled')
         return user
     except Exception:
         raise HTTPException(401,'Invalid or expired session')
@@ -272,7 +326,7 @@ def token(user):
     return jwt.encode({'sub':str(user.id),'role':user.role,'av':user.auth_version,'exp':datetime.now(timezone.utc)+timedelta(hours=8)},JWT_SECRET,algorithm='HS256')
 
 def user_json(u):
-    return {'id':u.id,'name':u.name,'email':u.email,'role':u.role,'active':u.active,'email_verified':u.email_verified}
+    return {'id':u.id,'name':u.name,'email':u.email,'username':u.username,'role':u.role,'active':u.active,'email_verified':u.email_verified}
 
 def room_json(r):
     return {'id':r.id,'property_id':r.property_id,'name':r.name,'room_type':r.room_type,'details':r.details,'size_sqm':float(r.size_sqm) if r.size_sqm is not None else None,'kitchen':r.kitchen,'bathroom':r.bathroom,'price':float(r.price) if r.price is not None else None,'currency':r.currency,'price_period':r.price_period,'available_from':r.available_from.isoformat() if r.available_from else None,'availability':r.availability,'rate_checked_at':r.rate_checked_at.isoformat() if r.rate_checked_at else None,'source_url':r.source_url,'image_url':r.image_url,'image_alt':r.image_alt,'image_layout':r.image_layout,'edit_version':r.edit_version,'active':r.active}
@@ -300,10 +354,15 @@ def slugify(t):
     return re.sub(r'^-+|-+$','',re.sub(r'[^a-z0-9]+','-',t.lower()))[:225]
 
 class Credentials(BaseModel):
+    identifier: str | None = Field(default=None,max_length=250)
+    email: str | None = Field(default=None,max_length=250)
+    password: str
+
+class Registration(BaseModel):
+    name: str = Field(min_length=2,max_length=150)
     email: EmailStr
     password: str
-class Registration(Credentials):
-    name: str = Field(min_length=2,max_length=150)
+    username: str | None = Field(default=None,max_length=40)
 class MediaInput(BaseModel):
     """An image is both an asset and a per-image layout choice."""
     url: str = Field(min_length=9, max_length=2048)
@@ -450,9 +509,12 @@ def register(data:Registration,request:Request,db:Session=Depends(get_db)):
     _throttle(db,request,'register',5,60)
     if len(data.password)<12:raise HTTPException(422,'Password must have at least 12 characters')
     if db.scalar(select(User).where(User.email==data.email.lower())):raise HTTPException(409,'Email already registered')
+    username=clean_username(data.username)
+    if username and db.scalar(select(User).where(User.username==username)):
+        raise HTTPException(409,'Username already taken')
     dev_skip=(APP_ENVIRONMENT!='production' and os.getenv('DEV_AUTO_VERIFY_EMAIL')=='1')
     if not dev_skip and (not SMTP_HOST or not SMTP_FROM):raise HTTPException(503,'Email verification must be configured before student sign-up')
-    u=User(name=data.name,email=data.email.lower(),password_hash=ph.hash(data.password),role='student',email_verified=dev_skip)
+    u=User(name=data.name,email=data.email.lower(),username=username,password_hash=ph.hash(data.password),role='student',email_verified=dev_skip)
     db.add(u);db.flush()
     if dev_skip:
         _claim_guest_enquiries(db,u);db.commit();db.refresh(u)
@@ -482,8 +544,14 @@ def verify_email(data:VerifyEmailInput,db:Session=Depends(get_db)):
 @app.post('/api/auth/login')
 def login(data:Credentials,request:Request,db:Session=Depends(get_db)):
     _throttle(db,request,'login',10,15)
-    u=db.scalar(select(User).where(User.email==data.email.lower()))
-    if not u or not u.active:raise HTTPException(401,'Incorrect credentials')
+    login_id=(data.identifier or data.email or '').strip().lower()
+    if not login_id:raise HTTPException(422,'Enter your email or username')
+    if '@' in login_id:
+        u=db.scalar(select(User).where(User.email==login_id))
+    else:
+        u=db.scalar(select(User).where(User.username==login_id))
+    if not u or not u.active or (u.email==DEMO_ADMIN_EMAIL and not local_demo_enabled()):
+        raise HTTPException(401,'Incorrect credentials')
     try:ph.verify(u.password_hash,data.password)
     except Exception:raise HTTPException(401,'Incorrect credentials')
     if u.role=='student' and not u.email_verified:raise HTTPException(403,'Verify your email before signing in')
@@ -738,12 +806,17 @@ def staff(_:User=Depends(require_admin),db:Session=Depends(get_db)):
 class StaffInput(BaseModel):
     name: str = Field(min_length=2,max_length=150)
     email: EmailStr
+    username: str | None = Field(default=None,max_length=40)
     password: str = Field(min_length=12,max_length=128)
     role: Literal['admin','editor'] = 'editor'
 @app.post('/api/admin/staff',status_code=201)
 def add_staff(data:StaffInput,user:User=Depends(require_manager),db:Session=Depends(get_db)):
     if db.scalar(select(User).where(User.email==data.email.lower())):raise HTTPException(409,'Email in use')
-    member=User(name=data.name,email=data.email.lower(),password_hash=ph.hash(data.password),role=data.role,email_verified=True)
+    username=clean_username(data.username)
+    if username and db.scalar(select(User).where(User.username==username)):
+        raise HTTPException(409,'Username already taken')
+    member=User(name=data.name,email=data.email.lower(),username=username,
+                password_hash=ph.hash(data.password),role=data.role,email_verified=True)
     db.add(member);db.flush();log(db,user,'staff.create',str(member.id));db.commit();return user_json(member)
 class StaffUpdate(BaseModel):
     active: bool | None = None
