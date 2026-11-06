@@ -31,3 +31,8 @@ Migrations run before the API is started in Docker. Run `cd apps/api && python -
 **Important:** This code is an improved development foundation, not a verified live launch. SMTP is required for student verification, and production deployment requires backups, HTTPS, multi-factor admin access, rate limit proxy configuration, image rights, real listing/price verification and end-to-end QA. Never publish real rent payments through Accom; students pay accommodation providers directly.
 
 See [docs/QA_REMEDIATION_2026-11-06.md](docs/QA_REMEDIATION_2026-11-06.md) for regression coverage and remaining limitations.
+
+
+## Local demonstration sign-in
+
+Set `APP_ENVIRONMENT=development` and `LOCAL_DEMO_MODE=1` in the local `.env`. The `.env.example` includes the demonstration username `Admin` and password `Admin@123`. This account is restricted to a localhost CORS origin and automatically disabled outside development demo mode. Never expose this demo stack publicly. The sign-in field accepts email or username. Existing administrator email credentials continue to work. After pulling new code, run Docker Compose with `--build`; Alembic migrates the optional username column automatically.

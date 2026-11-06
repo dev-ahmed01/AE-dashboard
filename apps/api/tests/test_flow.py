@@ -251,3 +251,13 @@ def test_rate_limited_login_and_media_file_validation(client,monkeypatch):
     assert good.status_code==201,good.text
     assert good.json()['url'].startswith('/api/media/')
     assert client.get(good.json()['url']).status_code==200
+
+def test_add_page_native_template_creates_unpublished_draft(client):
+    login=client.post('/api/auth/login',json={'email':'admin@example.com','password':'not-a-real-admin-password'})
+    assert login.status_code==200,login.text
+    headers={'Authorization':'Bearer '+login.json()['token']}
+    first=client.post('/api/admin/properties/draft',headers=headers,json={'name':'Kingston Student Residence'})
+    assert first.status_code==201,first.text
+    assert first.json()['published'] is False and first.json()['city']=='' and first.json()['noindex'] is True
+    second=client.post('/api/admin/properties/draft',headers=headers,json={'name':'Kingston Student Residence'})
+    assert second.status_code==201 and second.json()['slug']!=first.json()['slug']
