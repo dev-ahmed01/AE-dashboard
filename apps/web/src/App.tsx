@@ -235,6 +235,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
  const [previewScale,setPreviewScale]=useState(.4)
  const previewContainerRef=useRef<HTMLDivElement|null>(null)
  const previewFrameRef=useRef<HTMLIFrameElement|null>(null)
+ const fieldsPanelRef=useRef<HTMLElement|null>(null)
  const original=JSON.stringify({...defaults,...(source||{})})
  const dirty=JSON.stringify({...defaults,...(source||{}),...form})!==original
  const safeClose=()=>{if(!dirty||window.confirm('Discard your unsaved changes?'))close()}
@@ -248,7 +249,15 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
    </div><small>Regular: one grid cell. Large: a prominent two-by-two tile.</small></fieldset>
    <div className={'image-live-preview '+(item.layout==='large'?'large':'regular')}>{absolute(item.url)?<img src={item.url} alt={item.alt||'Image layout preview'} loading="lazy"/>:<span>Enter a valid image URL to preview</span>}</div>
  </div>
- const submit=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true);setError('');
+ const submit=async(e:React.FormEvent)=>{
+  e.preventDefault()
+  if(form.name.trim().length<3||form.city.trim().length<2){
+   setActiveSection('essentials')
+   fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})
+   setError('Complete the property name and city in Property essentials before saving.')
+   return
+  }
+  setBusy(true);setError('');
   const trimmed=(s:string)=>s.trim()
   const data={...form,
    highlights:form.highlights.map(trimmed).filter(Boolean),amenities:form.amenities.map(trimmed).filter(Boolean),
@@ -343,11 +352,11 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
      <aside className="accom-editor-sidebar" aria-label="Page sections">
       <div className="accom-editor-pane-heading">EDIT SECTIONS <span>{sections.length} sections</span></div>
       <nav className="accom-editor-sections" aria-label="Choose editing section">
-       {sections.map(item=><button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>setActiveSection(item.id)}><span className="accom-editor-section-index">{item.index}</span><span>{item.title}</span><ChevronRight size={15}/></button>)}
+       {sections.map(item=><button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>{setActiveSection(item.id);fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})}}><span className="accom-editor-section-index">{item.index}</span><span>{item.title}</span><ChevronRight size={15}/></button>)}
       </nav>
       <div className="accom-editor-side-note"><strong>Approved Accom template</strong><small>Only content changes. Your original layout, room comparison and enquiry design stay intact.</small></div>
      </aside>
-     <main className="accom-editor-fields" aria-live="off">
+     <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
       <div className="accom-editor-fields-head"><span className="eyebrow">{currentSection.index} / PAGE CONTENT</span><h3>{currentSection.title}</h3><p>{currentSection.desc}. Edits are reflected in the preview.</p></div>
       <div className="accom-editor-fields-body">
        {activeSection==='essentials'&&<div className="accom-fields-group">
