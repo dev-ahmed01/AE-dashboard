@@ -135,7 +135,7 @@ try {
   await page.locator('.accom-copy-field').first().waitFor({state:'visible',timeout:15000});
   const actualCopy = await page.locator('.accom-copy-field input,.accom-copy-field textarea').first().inputValue();
   assert(actualCopy.trim().length>1,'Mapped page fields must be prefilled from the rendered design');
-  const storyHeading = page.locator('.accom-copy-field').filter({hasText:'Living at'}).first().locator('input,textarea').first();
+  const storyHeading = page.locator('.accom-copy-panel').getByRole('textbox',{name:'Section heading'}).first();
   await storyHeading.fill('Designed around your student life');
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
