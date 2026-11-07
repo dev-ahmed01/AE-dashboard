@@ -58,7 +58,7 @@ def _draft_list(key, value):
 def render_draft(property_record, changes, snapshot, public_site_url):
     if not isinstance(changes, dict):
         changes = {}
-    fields = (TEXT_FIELDS | COLLECTIONS | {'slug', 'noindex', 'is_demo', 'review_score', 'review_count'})
+    fields = (TEXT_FIELDS | COLLECTIONS | {'slug', 'noindex', 'is_demo', 'review_score', 'review_count', 'content_overrides'})
     transient = SimpleNamespace(**{key: getattr(property_record, key, None) for key in fields})
     for key in TEXT_FIELDS:
         value = changes.get(key)
@@ -67,6 +67,8 @@ def render_draft(property_record, changes, snapshot, public_site_url):
     for key in COLLECTIONS:
         if key in changes:
             setattr(transient, key, _draft_list(key, changes[key]))
+    if isinstance(changes.get('content_overrides'), dict):
+        transient.content_overrides = dict(list(changes['content_overrides'].items())[:600])
     if isinstance(changes.get('is_demo'), bool):
         transient.is_demo = changes['is_demo']
     if isinstance(changes.get('noindex'), bool):
