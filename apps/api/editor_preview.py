@@ -12,7 +12,7 @@ TEXT_FIELDS = {
     'description', 'seo_title', 'meta_description', 'review_source_url', 'tour_url',
 }
 COLLECTIONS = {
-    'highlights', 'amenities', 'policies', 'faq', 'landmarks',
+    'highlights', 'highlight_descriptions', 'amenities', 'policies', 'faq', 'landmarks',
     'gallery', 'floorplans', 'offers', 'reviews',
 }
 WEB_IMAGE = re.compile(r'^https://[^\s<>"\']+$', re.I)
@@ -24,7 +24,7 @@ def _draft_list(key, value):
         return []
     result = []
     for item in value[:80]:
-        if key in ('highlights', 'amenities'):
+        if key in ('highlights', 'highlight_descriptions', 'amenities'):
             if isinstance(item, str) and item.strip():
                 result.append(item[:350])
             continue
