@@ -577,7 +577,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
     <div className="accom-editor-title">
      <button type="button" className="accom-editor-back" onClick={safeClose}><ChevronLeft size={15}/> Back to pages</button>
      <div className="accom-editor-title-line"><h1>{form.name||'Untitled accommodation'}</h1><span className="accom-editor-status">{source?.published?'Published':'Draft'}</span></div>
-     <p>Accommodation Page <span aria-hidden="true">·</span> /{form.slug||'new-page'}/</p>
+
     </div>
     <div className="accom-editor-head-actions">
       <span className={'accom-editor-saving-state '+(dirty?'unsaved':'')}>{busy?'Saving…':dirty?'Unsaved changes':'Saved'}</span>
