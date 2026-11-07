@@ -30,7 +30,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint, create_engine, func, or_, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
-from property_runtime import render_property
+from original_runtime import render_property
 from editor_preview import render_draft
 from demo_seed import seed_kingston
 from project_inspector import inspect_project, extract_html_from_zip
