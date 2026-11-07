@@ -70,8 +70,27 @@ try {
   await iframe.waitFor({timeout:20000});
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
-    return frame?.contentDocument?.querySelector('#property-title')?.textContent==='Visual QA Residence';
+    return frame?.contentDocument?.querySelector('.property-heading h1')?.textContent==='Visual QA Residence';
   },null,{timeout:20000});
+  const originalSections=['overview','about','tours','amenities','rooms','rules','payments','floorplan','neighbourhood','faqs','location','reviews'];
+  for(const id of originalSections){
+    await page.frameLocator('iframe[title="Live property page visual preview"]').locator('#'+id).waitFor({state:'attached'});
+  }
+  assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('style').count()>0,true,
+    'Draft preview must retain original inline styling');
+  assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('script[src="/accom-template/original-master.js"]').count(),1,
+    'Draft preview must run the actual original page script');
+  assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('#railPrice').count(),1,
+    'Original sticky pricing sidebar must be intact');
+  assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('.gallery-tile').count(),5,
+    'Unfilled admin preview displays original sample gallery, explicitly labeled as a template example');
+  await page.screenshot({path:'qa/evidence/exact-master-draft-preview-loaded.png'});
+  const draftFrame = page.frameLocator('iframe[title="Live property page visual preview"]');
+  await draftFrame.locator('.gallery-tile').first().click();
+  await draftFrame.locator('#galleryDialog').waitFor({state:'visible',timeout:10000});
+  await draftFrame.locator('#galleryDialog [aria-label="Close photo tour"]').click();
+  await draftFrame.locator('#galleryDialog').waitFor({state:'hidden',timeout:10000});
+
 
   await page.locator('.accom-editor-preview-controls').getByRole('button',{name:'Original',exact:true}).click();
   const sourceFrame=page.frameLocator('iframe[title="Complete original Accom source page"]');
@@ -85,7 +104,7 @@ try {
   );
   await page.waitForFunction(()=>{
     const iframe=document.querySelector('iframe[title="Live property page visual preview"]');
-    return iframe?.contentDocument?.querySelector('#property-title')?.textContent==='Visual QA Updated Residence';
+    return iframe?.contentDocument?.querySelector('.property-heading h1')?.textContent==='Visual QA Updated Residence';
   },null,{timeout:20000});
 
   await page.getByRole('button',{name:/Property photos/}).click();
@@ -95,7 +114,7 @@ try {
   await page.locator('.accom-editor-fields .image-layout-switch').getByRole('button',{name:'Large'}).click();
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
-    return frame?.contentDocument?.querySelector('.gallery-grid .gallery-tile img')?.getAttribute('src')==='/accom-template/assets/ensuite.webp';
+    return frame?.contentDocument?.querySelector('section.gallery > .gallery-tile img')?.getAttribute('src')==='/accom-template/assets/ensuite.webp';
   },null,{timeout:20000});
   await page.screenshot({path:'qa/evidence/editor-desktop.png'});
 

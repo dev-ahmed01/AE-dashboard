@@ -5,6 +5,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Include all application Python modules, including future helpers like editor_preview.py.
 COPY apps/api/*.py ./
 COPY apps/api/property_template.html ./property_template.html
+COPY apps/api/property_master.html ./property_master.html
 COPY apps/api/alembic.ini ./alembic.ini
 COPY apps/api/alembic ./alembic
 EXPOSE 8000

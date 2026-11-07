@@ -23,9 +23,9 @@ def test_staff_preview_renders_unsaved_content_without_updating_database(client)
     assert result.headers['cache-control'] == 'no-store'
     assert result.headers['x-robots-tag'] == 'noindex, nofollow'
     page = BeautifulSoup(result.text, 'html.parser')
-    assert page.select_one('#property-title').get_text(strip=True) == 'New Preview Name'
+    assert page.select_one('.property-heading h1').get_text(strip=True) == 'New Preview Name'
     assert page.select_one('meta[name=robots]')['content'] == 'noindex,nofollow'
-    assert len(page.select('.gallery-grid .gallery-tile')) == 1
+    assert len(page.select('section.gallery > .gallery-tile')) == 1
     assert page.select_one('.gallery-tile img')['alt'] == 'New lounge'
     assert 'javascript:alert' not in str(page)
     assert 'Private study space' in page.get_text(' ', strip=True)
@@ -44,6 +44,6 @@ def test_draft_previews_empty_data_without_required_field_errors(client):
                          json={'name':'Fresh Draft','city':'','gallery':[],'faq':[{'question':'','answer':''}]})
     assert result.status_code == 200, result.text
     page = BeautifulSoup(result.text,'html.parser')
-    assert page.select_one('#property-title').get_text(strip=True) == 'Fresh Draft'
-    assert page.select_one('#view-gallery').has_attr('disabled')
+    assert page.select_one('.property-heading h1').get_text(strip=True) == 'Fresh Draft'
+    assert page.select_one('.accom-master-preview-note') is not None
     assert page.select_one('script#accom-property-data') is not None
