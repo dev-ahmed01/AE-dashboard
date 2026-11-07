@@ -93,6 +93,16 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
  const [templateName,setTemplateName]=useState(''),[file,setFile]=useState<File|null>(null),[selectedTemplate,setSelectedTemplate]=useState<AccomTemplate|null>(null),[mappingFields,setMappingFields]=useState<AccomTemplate['fields']>([])
  const [inspection,setInspection]=useState<ProjectInspection|null>(null),[selectedSource,setSelectedSource]=useState('')
  const [addTemplatePreview,setAddTemplatePreview]=useState('')
+ const templateFrameContainer=useRef<HTMLDivElement|null>(null)
+ const [templateFrameScale,setTemplateFrameScale]=useState(.5)
+ useEffect(()=>{
+   const el=templateFrameContainer.current
+   if(!el)return
+   const update=()=>setTemplateFrameScale(Math.max(.2,Math.min(.9,(el.clientWidth-28)/1280)))
+   update()
+   const observer=new ResizeObserver(update);observer.observe(el)
+   return()=>observer.disconnect()
+ },[tab])
  const [pageTitle,setPageTitle]=useState(''),[pageTemplate,setPageTemplate]=useState('native-property')
  useEffect(()=>{
   if(pageTemplate==='native-property'){setAddTemplatePreview('');return}
@@ -231,10 +241,12 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
     </div>
     <div className="category-template-preview-pane">
       <div className="category-preview-pane-heading"><h3>Template Preview</h3><button type="button" className="outline" onClick={()=>{if(pageTemplate==='native-property')setShowApprovedDesign(true);else if(addTemplatePreview){setPreviewHTML(addTemplatePreview);setSelectedTemplate(null)}}}>Expand <ArrowRight size={16}/></button></div>
-      <div className="category-frame-shell">
-        {pageTemplate==='native-property'?<iframe title="Approved Accom template preview" src="/accom-live/index.html" sandbox="allow-scripts allow-popups"/>:
-         addTemplatePreview?<iframe title="Selected editorial template preview" sandbox="" srcDoc={addTemplatePreview}/>:
+      <div className="category-frame-shell" ref={templateFrameContainer}>
+        <div className="category-frame-scaled" style={{width:1280*templateFrameScale,height:960*templateFrameScale}}>
+        {pageTemplate==='native-property'?<iframe title="Approved Accom template preview" src="/accom-live/index.html" sandbox="allow-scripts allow-popups" style={{width:1280,height:960,transform:'scale('+templateFrameScale+')',transformOrigin:'top left'}}/>:
+         addTemplatePreview?<iframe title="Selected editorial template preview" sandbox="" srcDoc={addTemplatePreview} style={{width:1280,height:960,transform:'scale('+templateFrameScale+')',transformOrigin:'top left'}}/>:
          <div className="category-preview-pending">Choose an approved template to see its preview.</div>}
+        </div>
       </div>
       <p className="category-preview-helper">{pageTemplate==='native-property'?'This is the exact original live-page design. The template stays visually unchanged while content fields are mapped.':'Safe visual preview of the approved content template.'}</p>
     </div>
@@ -259,9 +271,11 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
       </div>
       <div className="category-template-preview-pane">
         <div className="category-preview-pane-heading"><h3>Template Inspection</h3><span className="category-light-status">{inspection?'Project inspected':selectedTemplate?'Mapped template':'Ready to inspect'}</span></div>
-        <div className="category-frame-shell">
-         {selectedTemplate&&previewHTML?<iframe title="Imported template preview" srcDoc={previewHTML} sandbox=""/>:
-          <iframe title="Original Accom template inspection" src="/accom-live/index.html" sandbox="allow-scripts allow-popups"/>}
+        <div className="category-frame-shell" ref={templateFrameContainer}>
+         <div className="category-frame-scaled" style={{width:1280*templateFrameScale,height:960*templateFrameScale}}>
+         {selectedTemplate&&previewHTML?<iframe title="Imported template preview" srcDoc={previewHTML} sandbox="" style={{width:1280,height:960,transform:'scale('+templateFrameScale+')',transformOrigin:'top left'}}/>:
+          <iframe title="Original Accom template inspection" src="/accom-live/index.html" sandbox="allow-scripts allow-popups" style={{width:1280,height:960,transform:'scale('+templateFrameScale+')',transformOrigin:'top left'}}/>}
+         </div>
         </div>
         <p className="category-preview-helper">Original Accom template reference. Imported project fields and pages appear below after inspection.</p>
       </div>
