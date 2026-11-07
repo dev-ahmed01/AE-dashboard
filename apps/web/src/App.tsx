@@ -451,6 +451,35 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   return()=>{alive=false}
  },[source?.id])
  const updateCopy=(key:string,value:string)=>setForm(f=>({...f,content_overrides:{...(f.content_overrides||{}),[key]:value}}))
+ const copyEditor=(<>
+       {copyFields.length>0&&<div className="accom-copy-panel">
+        <div className="accom-copy-panel-heading"><div><strong>Section content</strong><p>Only the fields belonging to this section. Existing values are already loaded.</p></div><span>{copyFields.length} fields</span></div>
+        {copyGroups.map(group=><section key={group.name} className="accom-field-frame" aria-label={group.name}>
+          <div className="accom-field-frame-title"><strong>{group.name}</strong><span>{group.fields.length} {group.fields.length===1?'field':'fields'}</span></div>
+          <div className="accom-field-frame-content">
+            {group.fields.map(field=>{
+              const value=form.content_overrides?.[field.key]??field.value
+              return <label key={field.key} className={'accom-copy-field accom-copy-'+field.kind}>
+                <span>{field.label}</span>
+                {field.kind==='textarea'?
+                  <textarea rows={3} value={value} onChange={e=>updateCopy(field.key,e.target.value)}/>:
+                  <input type="text" value={value} onChange={e=>updateCopy(field.key,e.target.value)}
+                    placeholder={field.kind==='image'?'https://… or upload a photo':field.kind==='cta_link'?'#rooms, /page or https://…':''}/>}
+                {field.kind==='image'&&<>
+                  {value&&<img className="accom-copy-photo" src={value} alt="Section image preview" loading="lazy"/>}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload section image" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{updateCopy(field.key,await uploadPhoto(file))}catch(err){setError((err as Error).message)}}}/>
+                </>}
+                {field.kind==='cta_link'&&<small>Only CTA destinations are editable. Leave navigation links managed by the template.</small>}
+                {field.kind==='cta_label'&&<small>Changes the button label; the original click behaviour is retained.</small>}
+              </label>
+            })}
+          </div>
+        </section>)}
+       </div>}
+       {contentError&&<p className="error" role="alert">{contentError}</p>}
+       {!copyFields.length&&!contentError&&<p className="accom-fields-help">{source?'Loading section content…':'Save your draft to load its section content.'}</p>}
+
+ </>)
  const previewSignature=JSON.stringify(form)
  useEffect(()=>{
   if(!source?.id){setPreviewHtml('');return}
@@ -557,6 +586,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
      <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
       <div className="accom-editor-fields-head"><span className="eyebrow">SECTION {currentSection.index}</span><h3>{currentSection.title}</h3><p>{currentSection.desc}</p></div>
       <div className="accom-editor-fields-body">
+       {activeSection!=='top'&&copyEditor}
 
        {activeSection==='top'&&<div className="accom-fields-group">
         <label>Property name<input required minLength={3} value={form.name} onChange={e=>set('name',e.target.value)}/></label>
@@ -603,32 +633,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
         <label>Review source URL<input type="url" value={form.review_source_url||''} onChange={e=>set('review_source_url',e.target.value)}/></label>
         <div className="form-grid"><label>Review score (0–5)<input type="number" min="0" max="5" step=".1" value={form.review_score??''} onChange={e=>set('review_score',e.target.value?Number(e.target.value):null)}/></label><label>Review count<input type="number" min="0" value={form.review_count??''} onChange={e=>set('review_count',e.target.value?Number(e.target.value):null)}/></label></div>
        </div>}
-       {copyFields.length>0&&<div className="accom-copy-panel">
-        <div className="accom-copy-panel-heading"><div><strong>Section content</strong><p>Only the fields belonging to this section. Existing values are already loaded.</p></div><span>{copyFields.length} fields</span></div>
-        {copyGroups.map(group=><section key={group.name} className="accom-field-frame" aria-label={group.name}>
-          <div className="accom-field-frame-title"><strong>{group.name}</strong><span>{group.fields.length} {group.fields.length===1?'field':'fields'}</span></div>
-          <div className="accom-field-frame-content">
-            {group.fields.map(field=>{
-              const value=form.content_overrides?.[field.key]??field.value
-              return <label key={field.key} className={'accom-copy-field accom-copy-'+field.kind}>
-                <span>{field.label}</span>
-                {field.kind==='textarea'?
-                  <textarea rows={3} value={value} onChange={e=>updateCopy(field.key,e.target.value)}/>:
-                  <input type="text" value={value} onChange={e=>updateCopy(field.key,e.target.value)}
-                    placeholder={field.kind==='image'?'https://… or upload a photo':field.kind==='cta_link'?'#rooms, /page or https://…':''}/>}
-                {field.kind==='image'&&<>
-                  {value&&<img className="accom-copy-photo" src={value} alt="Section image preview" loading="lazy"/>}
-                  <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload section image" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{updateCopy(field.key,await uploadPhoto(file))}catch(err){setError((err as Error).message)}}}/>
-                </>}
-                {field.kind==='cta_link'&&<small>Only CTA destinations are editable. Leave navigation links managed by the template.</small>}
-                {field.kind==='cta_label'&&<small>Changes the button label; the original click behaviour is retained.</small>}
-              </label>
-            })}
-          </div>
-        </section>)}
-       </div>}
-       {contentError&&<p className="error" role="alert">{contentError}</p>}
-       {!copyFields.length&&!contentError&&<p className="accom-fields-help">{source?'Loading section content…':'Save your draft to load its section content.'}</p>}
+       {activeSection==='top'&&copyEditor}
 
       </div>
      </main>
