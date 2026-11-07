@@ -696,6 +696,11 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
         </section>
        })}
      </div>
+     <aside className="accom-editor-right-panel" aria-label="Page tools">
+      <div className="accom-editor-right-tabs" role="tablist" aria-label="Editor tools">
+       {(['preview','seo','static'] as const).map(tab=><button key={tab} type="button" role="tab" aria-selected={rightTab===tab} className={rightTab===tab?'selected':''} onClick={()=>setRightTab(tab)}>{tab==='preview'?'Preview':tab==='seo'?'SEO':'Static'}</button>)}
+      </div>
+      {rightTab==='preview'&&<>
      <section className="accom-editor-preview" aria-label="Complete Accom property preview">
       <div className="accom-editor-preview-head">
         <div className="accom-editor-preview-label"><h3>Live Preview</h3><small>{sourceReference?'Approved original page · read-only':'Actual property layout · updates as you type'}</small></div>
@@ -716,50 +721,56 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
       </div>
       <div className="accom-editor-preview-foot"><span>{sourceReference?'Original template · select Draft to see edits.':previewLoading?'Updating preview…':previewError||'Preview only · Changes are not published'}</span></div>
      </section>
+
+      </>}
+      {rightTab==='seo'&&<section className="accom-right-seo" aria-label="SEO Settings">
+       <div className="accom-right-panel-intro"><strong>SEO settings</strong><span>Search appearance and crawler rules</span></div>
+       <div className="accom-right-panel-scroll">
+        <label className="accom-right-label">SEO title <small>{form.seo_title.length}/250</small>
+         <input value={form.seo_title} maxLength={250} onChange={e=>set('seo_title',e.target.value)} placeholder="Search result title"/>
+        </label>
+        <label className="accom-right-label">Meta description <small>{form.meta_description.length}/400</small>
+         <textarea rows={3} value={form.meta_description} maxLength={400} onChange={e=>set('meta_description',e.target.value)} placeholder="Short description for search results"/>
+        </label>
+        <div className="accom-robots-panel" aria-label="Robots Meta">
+         <strong>Robots meta</strong>
+         <div className="accom-robots-options">
+          <label><input type="checkbox" checked={!form.noindex} onChange={()=>set('noindex',false)}/> Index</label>
+          <label><input type="checkbox" checked={form.noindex} onChange={()=>set('noindex',true)}/> No Index</label>
+          <label><input type="checkbox" checked={form.nofollow} onChange={e=>set('nofollow',e.target.checked)}/> Nofollow</label>
+          <label title="Noarchive is ignored by Google Search but may be used by other engines."><input type="checkbox" checked={form.noarchive} onChange={e=>set('noarchive',e.target.checked)}/> No Archive</label>
+          <label><input type="checkbox" checked={form.noimageindex} onChange={e=>set('noimageindex',e.target.checked)}/> No Image Index</label>
+          <label><input type="checkbox" checked={form.nosnippet} onChange={e=>set('nosnippet',e.target.checked)}/> No Snippet</label>
+         </div>
+         <small>Draft and demonstration pages always remain noindex, nofollow. No Archive is not supported by Google Search.</small>
+        </div>
+        <label className="accom-right-label">Canonical URL (optional)
+         <input type="url" value={form.canonical_override} onChange={e=>set('canonical_override',e.target.value)} placeholder="https://example.com/page"/>
+         <small>Leave blank for the automatic canonical URL.</small>
+        </label>
+        <div className="accom-right-search-preview" aria-label="Search result preview">
+         <span>Search result preview</span>
+         <small>{seoPreviewUrl}</small>
+         <strong>{seoPreviewTitle}</strong>
+         <p>{form.nosnippet?'Text snippet disabled by the No Snippet rule.':seoPreviewDescription}</p>
+        </div>
+       </div>
+      </section>}
+      {rightTab==='static'&&<section className="accom-right-static" aria-label="Static section settings">
+       <div className="accom-right-panel-intro"><strong>Static sections</strong><span>Keep approved content unchanged</span></div>
+       <div className="accom-right-panel-scroll">
+        <p className="accom-right-static-note">Mark sections as static to lock their editing fields. You can still preview the content.</p>
+        <div className="accom-static-list">
+         {sections.map(item=><label className="accom-static-row" key={item.id}>
+          <span><strong>{item.index} / {item.title}</strong><small>{form.static_sections.includes(item.id)?'Static · editing locked':'Editable'}</small></span>
+          <input type="checkbox" checked={form.static_sections.includes(item.id)} onChange={e=>set('static_sections',e.target.checked?[...form.static_sections,item.id]:form.static_sections.filter(id=>id!==item.id))} aria-label={'Static '+item.title}/>
+          <span className="accom-static-switch" aria-hidden="true"/>
+         </label>)}
+        </div>
+       </div>
+      </section>}
+     </aside>
      </div>
-     <section className="accom-editor-seo-section" id="accom-seo-settings" aria-label="SEO Settings">
-      <div className="accom-seo-section-intro">
-       <span className="accom-section-eyebrow">02 / SEARCH</span>
-       <h2>SEO Settings</h2>
-       <p>Set the information search engines use for this page.</p>
-      </div>
-      <div className="accom-seo-settings-fields">
-       <label>SEO title <span className="accom-seo-field-count">{form.seo_title.length}/250</span>
-        <input maxLength={250} value={form.seo_title} onChange={e=>set('seo_title',e.target.value)} placeholder="Your unique search title"/>
-       </label>
-       <label>Meta description <span className="accom-seo-field-count">{form.meta_description.length}/400</span>
-        <textarea rows={3} maxLength={400} value={form.meta_description} onChange={e=>set('meta_description',e.target.value)} placeholder="Brief, useful page description"/>
-       </label>
-       <div className="accom-seo-switch-row">
-        <label className="accom-seo-switch">
-         <span className="accom-seo-switch-copy"><strong>Allow indexing</strong><small>{form.noindex?'Off · Ask search engines not to show this page in results.':'On · Allow search engines to index this page when it is published.'}</small></span>
-         <input type="checkbox" role="switch" aria-label="Allow indexing" checked={!form.noindex} onChange={e=>set('noindex',!e.target.checked)}/>
-         <span className="accom-seo-switch-track" aria-hidden="true"><i/></span>
-        </label>
-        <label className="accom-seo-switch">
-         <span className="accom-seo-switch-copy"><strong>Follow links</strong><small>{form.nofollow?'Off · Ask search engines not to follow links.':'On · Allow search engines to follow links on this page.'}</small></span>
-         <input type="checkbox" role="switch" aria-label="Follow links" checked={!form.nofollow} onChange={e=>set('nofollow',!e.target.checked)}/>
-         <span className="accom-seo-switch-track" aria-hidden="true"><i/></span>
-        </label>
-       </div>
-       <label>Canonical override (optional)
-        <input value={form.canonical_override} onChange={e=>set('canonical_override',e.target.value)} placeholder="Automatic self-canonical — or enter an https:// URL"/>
-        <small>Leave blank to use the property's own canonical URL.</small>
-       </label>
-       <div className="accom-seo-snippet" aria-label="Search result preview">
-        <span>Search result preview</span>
-        <p className="accom-seo-snippet-url">{seoPreviewUrl}</p>
-        <strong>{seoPreviewTitle}</strong>
-        <p>{seoPreviewDescription}</p>
-        <small>Search engines can rewrite how your page appears.</small>
-       </div>
-       <div className="accom-seo-publishing">
-        <label>Page URL slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Automatically created from property name"/></label>
-        <label className="accom-seo-demo-checkbox"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demonstration content — publishing remains blocked until verified</label>
-        <p>SEO settings are saved with your draft. Publishing is a separate action in All Pages; a draft or demonstration page stays non-indexable even when Allow indexing is on.</p>
-       </div>
-      </div>
-     </section>
     </div>
    </form>
   </div>
