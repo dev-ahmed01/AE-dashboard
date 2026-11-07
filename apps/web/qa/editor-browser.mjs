@@ -173,6 +173,14 @@ try {
     '15 Wood Street','The inspected original address must fill the demo field');
   assert.equal(await page.getByRole('textbox',{name:'Postcode',exact:true}).inputValue(),'KT1 1TY');
   assert.equal(await page.locator('.accom-editor-section-nav').count(),15);
+  await page.waitForFunction(()=>{
+    const frame=document.querySelector('iframe[title="Live property page visual preview"]');
+    const doc=frame?.contentDocument;
+    return doc?.querySelector('.property-address')?.textContent?.includes('15 Wood Street') &&
+      doc?.querySelector('#overview .intro-text')?.textContent?.includes('Modern en suite rooms');
+  },null,{timeout:25000});
+  assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('section.gallery > .gallery-tile').count(),4,
+    'Preview must render the supplied, unverified gallery photos in the original layout');
   await page.screenshot({path:'qa/evidence/demo-identity-prefilled.png'});
   await page.getByRole('button',{name:/Photo gallery/}).click();
   assert.equal(await page.locator('.accom-editor-fields .repeater-group .repeater-item').count(),4,
