@@ -341,10 +341,10 @@ function EditorialEditor({page,templates,close,onSaved}:{page:Editorial;template
 }
 
 const MASTER_PREVIEW_SELECTOR:Record<string,string> = {
- top:'#top', overview:'#overview', about:'#about', tours:'#tours',
+ top:'#property-identity', gallery:'section.gallery', overview:'#overview', about:'#about', tours:'#tours',
  amenities:'#amenities', rooms:'#rooms', rules:'#rules', payments:'#payments',
  floorplan:'#floorplan', neighbourhood:'#neighbourhood', faqs:'#faqs',
- location:'#location', reviews:'#reviews',
+ location:'#location', reviews:'#reviews', enquiry:'.cta-aside',
 }
 
 function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;close:()=>void;saved:()=>void;editRoom:(room:Room|null)=>void}){
@@ -354,6 +354,8 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const [seoOpen,setSeoOpen]=useState(false)
  const [contentSections,setContentSections]=useState<MasterSection[]>([])
  const [contentError,setContentError]=useState('')
+ const [templateSample,setTemplateSample]=useState<Record<string,unknown>|null>(null)
+ const [usingTemplateSample,setUsingTemplateSample]=useState(false)
  const [previewHtml,setPreviewHtml]=useState('')
  const [previewLoading,setPreviewLoading]=useState(false)
  const [previewError,setPreviewError]=useState('')
@@ -426,28 +428,52 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   previewFrameRef.current?.contentWindow?.postMessage({type:'accom-open-section',id},'*')
  }
  const sections=[
-  {id:'top',title:'Hero & gallery',desc:'Property identity, contact and photography',index:'01',icon:LayoutDashboard},
-  {id:'overview',title:'Residence overview',desc:'Introduction and key highlights',index:'02',icon:Home},
-  {id:'about',title:'Property details',desc:'Living experience and property story',index:'03',icon:Sparkles},
-  {id:'tours',title:'Photos & virtual tour',desc:'Photo categories and virtual visits',index:'04',icon:ImageIcon},
-  {id:'amenities',title:'Amenities & bills',desc:'Facilities, utilities and cost information',index:'05',icon:Check},
-  {id:'rooms',title:'Rooms & price choices',desc:'Room inventory, prices and tenancy options',index:'06',icon:LayoutDashboard},
-  {id:'rules',title:'House rules',desc:'Policies and resident conditions',index:'07',icon:ShieldCheck},
-  {id:'payments',title:'Payments & fees',desc:'Fees, offers and payment guidance',index:'08',icon:Wallet},
-  {id:'floorplan',title:'Floor plans',desc:'Property layouts and plans',index:'09',icon:ImageIcon},
-  {id:'neighbourhood',title:'Neighbourhood',desc:'Local area and student life',index:'10',icon:MapPin},
-  {id:'faqs',title:'Frequently asked questions',desc:'Student questions and answers',index:'11',icon:Search},
-  {id:'location',title:'Landmarks & location',desc:'University connections and nearby places',index:'12',icon:Compass},
-  {id:'reviews',title:'Student reviews',desc:'Testimonials, ratings and attribution',index:'13',icon:Heart},
+  {id:'top',title:'Property identity',desc:'Property name, address and university',index:'01',icon:Home},
+  {id:'gallery',title:'Photo gallery',desc:'Hero gallery images, captions and layout',index:'02',icon:ImageIcon},
+  {id:'overview',title:'Residence overview',desc:'Introductory description and highlight cards',index:'03',icon:LayoutDashboard},
+  {id:'about',title:'Living experience',desc:'Property story and room-type explanation',index:'04',icon:Sparkles},
+  {id:'tours',title:'Photos & virtual tours',desc:'Photo categories and tour information',index:'05',icon:ImageIcon},
+  {id:'amenities',title:'Amenities & bills',desc:'Included facilities and bills explanation',index:'06',icon:Check},
+  {id:'rooms',title:'Rooms & tenancy plans',desc:'Room types, pricing and availability',index:'07',icon:LayoutDashboard},
+  {id:'rules',title:'House rules',desc:'Policies, cancellations and visitor rules',index:'08',icon:ShieldCheck},
+  {id:'payments',title:'Payments & fees',desc:'Payment information, fees and offers',index:'09',icon:Wallet},
+  {id:'floorplan',title:'Floor plans',desc:'Plan images and viewing requests',index:'10',icon:ImageIcon},
+  {id:'neighbourhood',title:'Neighbourhood',desc:'Surrounding area and locality photo',index:'11',icon:MapPin},
+  {id:'faqs',title:'Frequently asked questions',desc:'Resident questions with individual answers',index:'12',icon:Search},
+  {id:'location',title:'Location & landmarks',desc:'Landmarks and route information',index:'13',icon:Compass},
+  {id:'reviews',title:'Student reviews',desc:'Verified review content and attribution',index:'14',icon:Heart},
+  {id:'enquiry',title:'Enquiry & CTA panel',desc:'Sticky side panel and enquiry buttons',index:'15',icon:ArrowRight},
  ]
  const currentSection=sections.find(item=>item.id===activeSection)||sections[0]
  const copyFields=contentSections.find(section=>section.id===activeSection)?.fields||[]
  const copyGroups=[...new Set(copyFields.map(field=>field.group))].map(name=>({name,fields:copyFields.filter(field=>field.group===name)}))
+ const applyTemplateSample=(sample:Record<string,unknown>)=>{
+  setForm(previous=>{
+   const updated={...previous}
+   for(const key of ['city','country','postcode','university','address','description','gallery','highlights','highlight_descriptions','amenities','policies','faq','landmarks'] as const){
+    const current=updated[key]
+    const next=sample[key]
+    if((typeof current==='string'&&!current.trim()&&typeof next==='string'&&next.trim()) ||
+       (Array.isArray(current)&&current.length===0&&Array.isArray(next)&&next.length>0)){
+     ;(updated as Record<string,unknown>)[key]=next
+    }
+   }
+   return {...updated,is_demo:true,noindex:true}
+  })
+  setUsingTemplateSample(true)
+  setSaveNotice('')
+ }
  useEffect(()=>{
   if(!source?.id)return
   let alive=true
   setContentError('')
-  api<{sections:MasterSection[]}>('/api/admin/properties/'+source.id+'/content-map').then(data=>{if(alive)setContentSections(data.sections)}).catch(e=>{if(alive)setContentError((e as Error).message)})
+  api<{sections:MasterSection[];template_sample:Record<string,unknown>|null;auto_prefill_template:boolean}>('/api/admin/properties/'+source.id+'/content-map')
+   .then(data=>{
+    if(!alive)return
+    setContentSections(data.sections)
+    setTemplateSample(data.template_sample)
+    if(data.auto_prefill_template && data.template_sample)applyTemplateSample(data.template_sample)
+   }).catch(e=>{if(alive)setContentError((e as Error).message)})
   return()=>{alive=false}
  },[source?.id])
  const updateCopy=(key:string,value:string)=>setForm(f=>({...f,content_overrides:{...(f.content_overrides||{}),[key]:value}}))
