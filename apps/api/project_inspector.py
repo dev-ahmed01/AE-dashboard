@@ -18,17 +18,17 @@ MAX_UNCOMPRESSED = 45 * 1024 * 1024
 MAX_ONE_FILE = 6 * 1024 * 1024
 SOURCE_EXTS = {'.html', '.htm', '.jsx', '.tsx', '.vue', '.svelte', '.astro', '.js', '.ts'}
 IGNORE_PARTS = {'node_modules', '.git', '.next', '.nuxt', '.svelte-kit', '__pycache__', 'coverage', 'vendor'}
-HEAD_RE = re.compile(r'<h([1-6])\\b[^>]*>(.*?)</h\\1>', re.I | re.S)
-LINK_RE = re.compile(r'<(?:a|button)\\b[^>]*>(.*?)</(?:a|button)>', re.I | re.S)
-IMG_RE = re.compile(r'<img\\b[^>]*(?:src|data-src)\\s*=\\s*["\\\']([^"\\\']+)', re.I)
-HTML_RE = re.compile(r'<(?:html|main|section|article|h1|h2)\\b', re.I)
-ROUTE_RE = re.compile(r'<Route\\b[^>]*path\\s*=\\s*["\\\']([^"\\\']+)["\\\']', re.I)
-TEXT_RE = re.compile(r'<[^>]+>|\\{[^{}]*\\}')
-INVALID_PATH = re.compile(r'(^/|\\\\|(^|/)\\.\\.(?:/|$)|[\\x00-\\x1f])')
-TAG_STRIP = re.compile(r'<[^>]*>|\\{[^{}]*\\}')
+HEAD_RE = re.compile(r'<h([1-6])\b[^>]*>(.*?)</h\1>', re.I | re.S)
+LINK_RE = re.compile(r'<(?:a|button)\b[^>]*>(.*?)</(?:a|button)>', re.I | re.S)
+IMG_RE = re.compile(r"<img\b[^>]*(?:src|data-src)\s*=\s*['\"]([^'\"]+)", re.I)
+HTML_RE = re.compile(r'<(?:html|main|section|article|h1|h2)\b', re.I)
+ROUTE_RE = re.compile(r"<Route\b[^>]*path\s*=\s*['\"]([^'\"]+)['\"]", re.I)
+TEXT_RE = re.compile(r'<[^>]+>|\{[^{}]*\}')
+INVALID_PATH = re.compile(r'(^/|\\|(^|/)\.\.(?:/|$)|[\x00-\x1f])')
+TAG_STRIP = re.compile(r'<[^>]*>|\{[^{}]*\}')
 
 def _plain(value: str) -> str:
-    return re.sub(r'\\s+', ' ', TAG_STRIP.sub('', value)).strip()[:150]
+    return re.sub(r'\s+', ' ', TAG_STRIP.sub('', value)).strip()[:150]
 
 def _route(path: str) -> str | None:
     p = path.replace('\\\\', '/').strip('/')
