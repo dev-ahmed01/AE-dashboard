@@ -29,8 +29,8 @@ DYNAMIC_GROUPS = frozenset(("amenity-groups", "overview-facts", "disclosure-list
                              "review-example-grid", "accom-master-offers", "accom-master-floorplans",
                              "room-card", "room-list", "photo-category-grid", "rail-nearby-list"))
 SKIP_PARENTS = frozenset(("script", "style", "svg", "noscript", "template", "textarea", "select", "option"))
-IMAGE_URL = re.compile(r"^(https://[^\\s<>\"']+|/(?:api/media/[0-9]+|accom-template/assets/[a-zA-Z0-9_-]+\\.(?:webp|jpg|jpeg|png)))$")
-LINK_URL = re.compile(r"^(https://[^\\s<>\"']+|/(?!/)[^\\s<>\"']*|#[^\\s<>\"']*|mailto:[^\\s<>\"']+|tel:[+0-9 ()-]+)$", re.I)
+IMAGE_URL = re.compile(r"^(https://[^\s<>\"']+|/(?:api/media/[0-9]+|accom-template/assets/[a-zA-Z0-9_-]+\.(?:webp|jpg|jpeg|png)))$")
+LINK_URL = re.compile(r"^(https://[^\s<>\"']+|/(?!/)[^\s<>\"']*|#[^\s<>\"']*|mailto:[^\s<>\"']+|tel:[+0-9 ()-]+)$", re.I)
 
 
 def _section(tag):
@@ -58,7 +58,7 @@ def _path(tag):
     current = tag
     while isinstance(current, Tag) and current.name not in ("html", "body"):
         ident = current.get("id")
-        if ident and re.fullmatch(r"[A-Za-z][\\w-]*", ident):
+        if ident and re.fullmatch(r"[A-Za-z][\w-]*", ident):
             steps.append("#" + ident)
             break
         position = 1 + sum(1 for previous in current.previous_siblings
@@ -69,7 +69,7 @@ def _path(tag):
 
 
 def _label(tag, value, kind):
-    context = re.sub(r"\\s+", " ", tag.get_text(" ", strip=True))[:65]
+    context = re.sub(r"\s+", " ", tag.get_text(" ", strip=True))[:65]
     if kind == "src":
         return "Image URL — " + (tag.get("alt") or "Property photo")[:55]
     if kind == "alt":
@@ -79,7 +79,7 @@ def _label(tag, value, kind):
     role = {"h1": "Main heading", "h2": "Section heading", "h3": "Heading",
             "p": "Paragraph", "button": "Button", "a": "Link label",
             "strong": "Emphasis", "span": "Label"}.get(tag.name, "Text")
-    return role + " — " + re.sub(r"\\s+", " ", str(value))[:65]
+    return role + " — " + re.sub(r"\s+", " ", str(value))[:65]
 
 
 def iter_fields(soup):
@@ -142,8 +142,8 @@ def apply_overrides(soup, values):
         kind = field["kind"]
         if kind == "text":
             original = str(node)
-            before = re.match(r"^\\s*", original).group()
-            after = re.search(r"\\s*$", original).group()
+            before = re.match(r"^\s*", original).group()
+            after = re.search(r"\s*$", original).group()
             node.replace_with(before + value + after)
         else:
             tag[kind] = value
@@ -163,7 +163,7 @@ def valid_overrides(values):
     if not isinstance(values, dict) or len(values) > 600:
         raise ValueError("Too many page-copy fields")
     for key, value in values.items():
-        if not isinstance(key, str) or len(key) > 500 or not re.fullmatch(r"[\\w#:. >()-]+\\|(text:[0-9]+|href|src|alt)", key):
+        if not isinstance(key, str) or len(key) > 500 or not re.fullmatch(r"[\w#:. >()-]+\|(text:[0-9]+|href|src|alt)", key):
             raise ValueError("Invalid page-copy field identifier")
         kind = key.rsplit("|", 1)[-1].split(":", 1)[0]
         if not _approved(kind, value):
