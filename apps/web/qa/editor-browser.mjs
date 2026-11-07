@@ -28,6 +28,7 @@ try {
     await fullSource.locator('#'+id).waitFor({state:'attached',timeout:20000});
   }
   assert.equal(await fullSource.locator('.gallery-tile').count(),5,'Live source main gallery should contain five tiles');
+  await page.screenshot({path:'qa/evidence/exact-original-source-in-category.png'});
   await fullSource.locator('.gallery-tile').first().click();
   await fullSource.locator('#galleryDialog').waitFor({state:'visible',timeout:10000});
   await fullSource.locator('#galleryDialog [aria-label="Close photo tour"]').click();
