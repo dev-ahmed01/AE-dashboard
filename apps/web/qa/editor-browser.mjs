@@ -147,6 +147,13 @@ try {
   assert(await page.locator('#accom-seo-settings').isVisible(),'SEO is a standalone section below the property fields');
   const seoSection=page.locator('#accom-seo-settings');
   await seoSection.scrollIntoViewIfNeeded();
+  const seoLayout=await page.evaluate(()=>{
+    const seo=document.querySelector('#accom-seo-settings').getBoundingClientRect();
+    const preview=document.querySelector('.accom-editor-preview').getBoundingClientRect();
+    return {seoTop:seo.top,previewBottom:preview.bottom};
+  });
+  assert(seoLayout.previewBottom<=seoLayout.seoTop+3,
+    'Sticky preview must end before the full-width SEO card: '+JSON.stringify(seoLayout));
   assert.equal(await seoSection.getByRole('switch').count(),2,'Independent indexing and follow controls');
   await seoSection.getByRole('switch',{name:'Allow indexing'}).check();
   await seoSection.getByRole('switch',{name:'Follow links'}).uncheck();
