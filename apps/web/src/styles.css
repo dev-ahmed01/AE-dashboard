@@ -1267,3 +1267,6 @@ section.category-split-workspace.category-add-page{
  .accom-seo-switch-row{grid-template-columns:1fr}
  .accom-seo-section-intro h2{font-size:22px}
 }
+
+/* Keep SEO switch input clickable over its visible track. */
+.accom-editor-seo-section .accom-seo-switch input{position:absolute;right:17px;top:50%;transform:translateY(-50%);width:43px;height:24px;opacity:0;cursor:pointer;z-index:3;pointer-events:auto}
