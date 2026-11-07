@@ -181,46 +181,100 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
  const addNote=async()=>{if(!selectedEnquiry||!noteText.trim())return;await action(async()=>{await api('/api/admin/enquiries/'+selectedEnquiry+'/notes',{method:'POST',body:JSON.stringify({message:noteText})});setNotes(await api<typeof notes>('/api/admin/enquiries/'+selectedEnquiry+'/notes'));setNoteText('')},'Note saved')}
  const changeCashback=async(c:CashbackRow,status:string)=>{await action(()=>api('/api/admin/cashback/'+c.id,{method:'PATCH',body:JSON.stringify({...c,status})}),'Cashback updated')}
  return <main className="category-shell">
-  <aside className="category-sidebar"><Logo/><div className="category-sidebar-item active"><Home size={18}/> Category</div><div className="admin-side-bottom">Accom by Emlen<small>{user.role==='admin'?'Administrator':'Content editor'}</small></div><button className="category-exit" onClick={()=>go('/')}>View website <ArrowRight size={14}/></button><button className="category-exit" onClick={()=>{token='';sessionStorage.removeItem('accom_token');window.location.href='/login'}}>Sign out <ArrowRight size={14}/></button></aside>
-  <div className="category-content"><div className="category-heading"><div><span className="eyebrow">PAGE MANAGEMENT</span><h1>Category</h1><p>Manage approved accommodation and editorial pages from one place.</p></div><div className="category-heading-actions"><button type="button" className="category-tools-trigger" onClick={()=>setShowOperations(true)}>Operations</button><span className="signed-user">{user.name} · {user.role}</span></div></div>
+  <aside className="category-sidebar"><div className="category-sidebar-brand"><Logo/><small>CONTENT MANAGER</small></div><nav aria-label="Admin navigation"><div className="category-sidebar-item active">Category</div></nav><div className="category-sidebar-spacer"/><div className="admin-side-bottom"><strong>Content workspace</strong><small>{user.role==='admin'?'Administrator':'Content editor'}</small></div><button className="category-exit" onClick={()=>go('/')}>View website <ArrowRight size={14}/></button><button className="category-exit" onClick={()=>{token='';sessionStorage.removeItem('accom_token');window.location.href='/login'}}>Sign out <ArrowRight size={14}/></button></aside>
+  <div className="category-content"><div className="category-heading"><h1>Category</h1><div className="category-heading-actions"><button type="button" className="category-tools-trigger" onClick={()=>setShowOperations(true)}>Operations</button><span className="signed-user">{user.name}</span></div></div>
   <nav className="category-tabs" role="tablist" aria-label="Category tabs">{(['All Pages','Add Page','Upload Template'] as const).map(t=><button key={t} type="button" className={tab===t?'active':''} aria-selected={tab===t} role="tab" onClick={()=>{setTab(t);setError('');setNotice('')}}>{t}</button>)}</nav>
-  {error&&<div className="error admin-message" role="alert">{error}<button onClick={()=>setError('')} aria-label="Dismiss error">×</button></div>}
+    {error&&<div className="error admin-message" role="alert">{error}<button onClick={()=>setError('')} aria-label="Dismiss error">×</button></div>}
   {notice&&<div className="notice admin-message" role="status">{notice}<button onClick={()=>setNotice('')} aria-label="Dismiss message">×</button></div>}
   {tab==='All Pages'&&<>
-    <div className="category-list-header"><div><h2>All Pages</h2><p>Find, review and update pages in your directory.</p></div><div className="accom-reference-actions"><button type="button" className="outline" onClick={()=>setShowApprovedDesign(true)}>View complete approved design <ArrowRight size={15}/></button><span className="category-result-count">{filtered.length} {filtered.length===1?'page':'pages'}</span></div></div>
     <div className="category-list-toolbar" role="search">
-     <div className="category-search"><Search size={17}/><input aria-label="Search pages" type="search" placeholder="Search by page name or URL…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
-     <div className="category-filters" role="group" aria-label="Page publishing status">{(['All','Published','Draft'] as const).map(t=><button key={t} type="button" aria-pressed={filter===t} className={filter===t?'selected':''} onClick={()=>setFilter(t)}>{t}</button>)}</div>
+      <div className="category-filters" role="group" aria-label="Page publishing status">{(['All','Published','Draft'] as const).map(t=><button key={t} type="button" aria-pressed={filter===t} className={filter===t?'selected':''} onClick={()=>setFilter(t)}>{t}<small>{t==='All'?[...properties.filter(p=>!p.is_demo),...pages].filter(p=>!p.archived).length:t==='Published'?[...properties.filter(p=>!p.is_demo),...pages].filter(p=>p.published&&!p.archived).length:[...properties.filter(p=>!p.is_demo),...pages].filter(p=>!p.published&&!p.archived).length}</small></button>)}</div>
+      <div className="category-search"><Search size={16}/><input aria-label="Search pages" type="search" placeholder="Search pages…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
     </div>
-    <div className="category-page-list">
-     {filter==='All'&&(!search.trim()||'accom property detail original live netlify approved master'.includes(search.trim().toLowerCase()))&&<article className="category-page-row accom-master-template-row">
-      <div><span className="category-page-type">APPROVED MASTER DESIGN · REFERENCE</span><h3>Accom Property Detail — Original Live Page</h3><small>Complete 13-section Netlify design · gallery, rooms, costs, policies, FAQs and interactive enquiry demonstration</small></div>
-      <div className="accom-master-row-actions"><span className="category-page-status draft">Design reference</span><button type="button" className="outline" onClick={()=>setShowApprovedDesign(true)}>View exact page <ArrowRight size={15}/></button></div>
-     </article>}
-     {filtered.map(p=><article key={p.kind+'-'+p.id} className="category-page-row"><div><span className="category-page-type">{p.kind==='property'?'Accommodation':'Editorial'}</span><h3>{p.title}</h3><small>{p.kind==='property'?`${p.city} · ${p.rooms?.filter(r=>r.active).length||0} active rooms`:`/${p.slug}`}</small></div><span className={'category-page-status '+(p.archived?'archived':p.published?'published':'draft')}>{p.archived?'Archived':p.published?'Published':'Draft'}</span><div className="category-page-actions">{user.role==='editor'&&p.published?<small title="Published pages require administrator approval">Admin only</small>:<button onClick={()=>p.kind==='property'?startEdit(p as Property):setEditEditorial(p as Editorial)}>Edit</button>}{p.kind==='property'&&(!p.published||user.role==='admin')&&<button onClick={()=>{setRoomParent(p as Property);setRoom(null)}}>Rooms</button>}{p.kind==='property'&&<button onClick={()=>{if(p.slug==='iq-kingston'&&(p as Property).is_demo){setShowApprovedDesign(true);return}const w=window.open('about:blank','_blank');api<{url:string}>('/api/admin/properties/'+p.id+'/preview-link',{method:'POST'}).then(v=>{if(w)w.location.href=v.url;else window.location.href=v.url}).catch(e=>{w?.close();report(e)})}}>{p.slug==='iq-kingston'&&(p as Property).is_demo?'Preview exact design':'Preview'}</button>}{p.kind==='editorial'&&<button onClick={()=>{apiText('/api/admin/pages/'+p.id+'/preview').then(setPreviewHTML).catch(report);setSelectedTemplate(null)}}>Preview</button>}{user.role==='admin'&&p.kind==='property'&&!p.published&&!p.archived&&<button onClick={()=>action(()=>api('/api/admin/properties/'+p.id+'/publish',{method:'POST'}),'Page published')}>Publish</button>}{user.role==='admin'&&p.kind==='editorial'&&!p.published&&!p.archived&&<button onClick={()=>action(()=>api('/api/admin/pages/'+p.id+'/publish',{method:'POST'}),'Page published')}>Publish</button>}{user.role==='admin'&&p.kind==='property'&&<button onClick={()=>{if(window.confirm(p.archived?'Restore this page?':'Archive this page?'))action(()=>api('/api/admin/properties/'+p.id+'/'+(p.archived?'restore':'archive'),{method:'POST'}),p.archived?'Restored':'Archived')}}>{p.archived?'Restore':'Archive'}</button>}</div></article>)}{!filtered.length&&<div className="category-empty">No matching pages. Use Add Page to create your first listing.</div>}</div>
-    {[...properties,...pages].some(p=>p.archived)&&<button type="button" className="category-archived-link" onClick={()=>setFilter(cur=>cur==='Archived'?'All':'Archived')}>{filter==='Archived'?'← Back to active pages':'View archived pages'}</button>}
+    <div className="category-table-wrap">
+      <div className="category-table-header" aria-hidden="true"><span>#</span><span>Page Name</span><span>Template</span><span>URL</span><span>Status</span><span>Last updated</span><span>Actions</span></div>
+      <div className="category-page-list">
+      {filtered.map((p,i)=><article key={p.kind+'-'+p.id} className="category-page-row">
+        <span className="category-table-number">{String(i+1).padStart(2,'0')}</span>
+        <div className="category-table-name"><h3>{p.title}</h3><small>{p.kind==='property'?'Student accommodation':'Editorial page'}</small></div>
+        <span className="category-table-type">{p.kind==='property'?'Accom Property Detail':(templates.find(t=>t.id===(p as Editorial).template_id)?.name||'Imported template')}</span>
+        <span className="category-table-url" title={'/'+p.slug+'/'}>/{p.slug}/</span>
+        <span className={'category-page-status '+(p.archived?'archived':p.published?'published':'draft')}>{p.archived?'Archived':p.published?'Published':'Draft'}</span>
+        <span className="category-table-date">{p.kind==='property'&&p.verified_at?fmt(p.verified_at):'—'}</span>
+        <div className="category-page-actions">
+          <details className="category-row-action-menu"><summary>Actions <ChevronDown size={14}/></summary><div className="category-row-action-dropdown">
+            {(user.role!=='editor'||!p.published)&&<button type="button" onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');p.kind==='property'?startEdit(p as Property):setEditEditorial(p as Editorial)}}>Edit page</button>}
+            {p.kind==='property'&&(!p.published||user.role==='admin')&&<button type="button" onClick={()=>{setRoomParent(p as Property);setRoom(null)}}>Manage rooms</button>}
+            <button type="button" onClick={()=>{if(p.kind==='property'){const w=window.open('about:blank','_blank');api<{url:string}>('/api/admin/properties/'+p.id+'/preview-link',{method:'POST'}).then(v=>{if(w)w.location.href=v.url;else window.location.href=v.url}).catch(e=>{w?.close();report(e)})}else{apiText('/api/admin/pages/'+p.id+'/preview').then(setPreviewHTML).catch(report);setSelectedTemplate(null)}}}>Preview</button>
+            {user.role==='admin'&&!p.published&&!p.archived&&<button type="button" onClick={()=>action(()=>api('/api/admin/'+(p.kind==='property'?'properties':'pages')+'/'+p.id+'/publish',{method:'POST'}),'Page published')}>Publish</button>}
+            {user.role==='admin'&&p.kind==='property'&&<button type="button" onClick={()=>{if(window.confirm(p.archived?'Restore this page?':'Archive this page?'))action(()=>api('/api/admin/properties/'+p.id+'/'+(p.archived?'restore':'archive'),{method:'POST'}),p.archived?'Restored':'Archived')}}>{p.archived?'Restore page':'Archive page'}</button>}
+          </div></details>
+        </div>
+      </article>)}
+      {!filtered.length&&<div className="category-empty"><strong>No pages here yet.</strong><p>Create your first property page or import a template to get started.</p><button type="button" className="primary" onClick={()=>setTab('Add Page')}>Add a page <ArrowRight size={15}/></button></div>}
+      </div>
+    </div>
+    {[...properties.filter(p=>!p.is_demo),...pages].some(p=>p.archived)&&<button type="button" className="category-archived-link" onClick={()=>setFilter(cur=>cur==='Archived'?'All':'Archived')}>{filter==='Archived'?'← Back to active pages':'View archived pages'}</button>}
   </>}
-  {tab==='Add Page'&&<section className="category-form-card category-add-page">
-   <div className="category-form-intro"><span className="eyebrow">CREATE NEW PAGE</span><h2>Add Page</h2><p>Name your page, select an approved template and continue to its editor.</p></div>
-   <form className="category-create-form" onSubmit={e=>{e.preventDefault();void create()}}>
-    <label>Page name<input required minLength={3} maxLength={220} placeholder="e.g. Kingston Student Residence" value={pageTitle} onChange={e=>setPageTitle(e.target.value)}/></label>
-    <label>Choose template<select required value={pageTemplate} onChange={e=>setPageTemplate(e.target.value)}>
-      <option value="native-property">Accom Property Detail · Approved design</option>
-      {templates.filter(t=>t.approved).map(t=><option key={t.id} value={t.id}>{t.name} · {t.sections.length} sections</option>)}
-    </select></label>
-    {pageTemplate==='native-property'&&<div className="accom-template-reference-note"><div><strong>Approved Accom property page</strong><small>Original Netlify design · 13 complete sections, with its galleries, room comparison, bills calculator, policies, FAQs and enquiry demonstration</small></div><button type="button" className="outline" onClick={()=>setShowApprovedDesign(true)}>Preview actual design <ArrowRight size={15}/></button></div>}
-    <div className="category-create-foot"><p>{pageTemplate==='native-property'?'Creates a property draft. Add location, rooms and photos in the next screen.':'Creates a draft from the approved HTML template.'}</p><button type="submit" className="primary" disabled={busy}>Create page <ArrowRight size={16}/></button></div>
-   </form>
+  {tab==='Add Page'&&<section className="category-split-workspace category-add-page">
+    <div className="category-form-card category-add-form">
+      <h2>Add Page</h2>
+      <form className="category-create-form" onSubmit={e=>{e.preventDefault();void create()}}>
+        <label>Template<select aria-label="Template" value={pageTemplate} onChange={e=>setPageTemplate(e.target.value)}>
+          <option value="native-property">Accom Property Detail — Approved original</option>
+          {templates.filter(t=>t.approved).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+        </select></label>
+        <label>Page name<input aria-label="Page name" required minLength={3} maxLength={220} placeholder="e.g. iQ Kingston Student Residence" value={pageTitle} onChange={e=>setPageTitle(e.target.value)}/></label>
+        <p className="category-title-guidance">Use the property or page name students will recognize. You can edit the SEO title separately.</p>
+        <button type="submit" className="primary category-submit" disabled={busy}>Create page <ArrowRight size={17}/></button>
+      </form>
+    </div>
+    <div className="category-template-preview-pane">
+      <div className="category-preview-pane-heading"><h3>Template Preview</h3><button type="button" className="outline" onClick={()=>{if(pageTemplate==='native-property')setShowApprovedDesign(true);else if(addTemplatePreview){setPreviewHTML(addTemplatePreview);setSelectedTemplate(null)}}}>Expand <ArrowRight size={16}/></button></div>
+      <div className="category-frame-shell">
+        {pageTemplate==='native-property'?<iframe title="Approved Accom template preview" src="/accom-live/index.html" sandbox="allow-scripts allow-popups"/>:
+         addTemplatePreview?<iframe title="Selected editorial template preview" sandbox="" srcDoc={addTemplatePreview}/>:
+         <div className="category-preview-pending">Choose an approved template to see its preview.</div>}
+      </div>
+      <p className="category-preview-helper">{pageTemplate==='native-property'?'This is the exact original live-page design. The template stays visually unchanged while content fields are mapped.':'Safe visual preview of the approved content template.'}</p>
+    </div>
   </section>}
   {tab==='Upload Template'&&<section className="category-template-workspace">
-   <div className="category-upload-intro"><span className="eyebrow">TEMPLATE MANAGER</span><h2>Upload Template</h2><p>Upload HTML, inspect every section and field, then approve the areas editors may change.</p></div>
-   <div className="accom-native-template-card"><div><span className="eyebrow">BUNDLED APPROVED TEMPLATE</span><h3>Accom Property Detail · Original Netlify version</h3><p>Complete original page with all 13 sections and interactive behavior. This is the master reference for accommodation page integration, not a flattened HTML extraction.</p></div><button type="button" className="outline" onClick={()=>setShowApprovedDesign(true)}>View complete design <ArrowRight size={15}/></button></div>
-   <div className="category-upload-card">
-    <label className="category-upload"><strong>Choose HTML file</strong><input type="file" accept=".html,text/html" onChange={e=>setFile(e.target.files?.[0]||null)}/><span>{file?.name||'UTF-8 .html · up to 1.5 MB'}</span></label>
-    <label>Template name<input value={templateName} onChange={e=>setTemplateName(e.target.value)} placeholder="e.g. City landing page"/></label>
-    <button type="button" className="primary" disabled={busy||user.role!=='admin'||!file} onClick={upload}>Detect sections <ArrowRight size={16}/></button>
-   </div>
-   {!!templates.length&&<div className="category-template-library"><div className="category-subheading"><h3>Uploaded templates</h3><span>{templates.length} total</span></div><div className="category-template-list">{templates.map(t=><button key={t.id} type="button" className={selectedTemplate?.id===t.id?'selected':''} aria-pressed={selectedTemplate?.id===t.id} onClick={()=>openTemplate(t)}><strong>{t.name}</strong><small>{t.sections.length} sections · {t.fields.length} fields · {t.approved?'Approved':'Needs review'}</small></button>)}</div></div>}
+    <div className="category-split-workspace category-import-workspace">
+      <div className="category-form-card category-import-form">
+        <h2>Upload Template</h2>
+        <p className="category-import-subtitle">Bring in your project page, then review the detected content.</p>
+        <div className="category-upload-card">
+          <label className="category-upload-drop">
+            <span className="category-upload-glyph"><Upload size={25}/></span>
+            <strong>{file?'File selected':'Drop a project file here'}</strong>
+            <span className="category-file-button">{file?'Choose another':'Choose file'}</span>
+            <input type="file" accept=".html,.htm,.zip,.jsx,.tsx,.vue,.svelte,.astro" onChange={e=>{setFile(e.target.files?.[0]||null);setInspection(null);setSelectedSource('');setSelectedTemplate(null)}}/>
+            <small>{file?.name||'.zip, .html, .tsx, .jsx, .vue, .svelte, .astro · up to 24 MB'}</small>
+          </label>
+          <label>Template name (optional)<input value={templateName} onChange={e=>setTemplateName(e.target.value)} placeholder="e.g. Student residence detail"/></label>
+          <button type="button" className="primary category-submit" disabled={busy||user.role!=='admin'||!file} onClick={upload}>{busy?'Inspecting…':'Inspect project'} <ArrowRight size={16}/></button>
+        </div>
+        <div className="category-upload-help"><strong>How page extraction works</strong><p>Upload your React, Next.js, Vite or other source as a ZIP to detect routes, headings, CTAs and image references. For a pixel-matched visual template, include a built static HTML export. Source code is never executed on the server.</p></div>
+      </div>
+      <div className="category-template-preview-pane">
+        <div className="category-preview-pane-heading"><h3>Template Inspection</h3><span className="category-light-status">{inspection?'Project inspected':selectedTemplate?'Mapped template':'Ready to inspect'}</span></div>
+        <div className="category-frame-shell">
+         {selectedTemplate&&previewHTML?<iframe title="Imported template preview" srcDoc={previewHTML} sandbox=""/>:
+          <iframe title="Original Accom template inspection" src="/accom-live/index.html" sandbox="allow-scripts allow-popups"/>}
+        </div>
+        <p className="category-preview-helper">Original Accom template reference. Imported project fields and pages appear below after inspection.</p>
+      </div>
+    </div>
+    {inspection&&<section className="category-project-results">
+      <div className="category-detection-header"><div><span className="eyebrow">PROJECT DISCOVERY</span><h3>{inspection.filename}</h3><p>{inspection.framework} · {inspection.pages.length} page candidates · {inspection.total_fields} text and media candidates</p></div></div>
+      <div className="category-project-content">
+        <div className="category-project-routes"><h4>Detected routes & components</h4>{inspection.pages.map(p=><button key={p.file} type="button" className={selectedSource===p.file?'selected':''} onClick={()=>setSelectedSource(p.file)}><strong>{p.route}</strong><span>{p.file}</span><small>{p.renderable_html?'HTML ready for mapping':'Source · build required'}</small></button>)}</div>
+        <div className="category-project-fields">{inspection.pages.filter(p=>p.file===selectedSource).map(p=><div key={p.file}><h4>{p.route==='(component)'?p.file:p.route}</h4><p>{p.type} · {p.fields.length} detected fields</p><div className="category-project-field-list">{p.fields.length?p.fields.map((field,i)=><div key={i}><span>{field.kind}{field.tag?' · '+field.tag:''}</span><strong>{field.value}</strong></div>):<p>No static fields found. Dynamic content may be loaded at runtime.</p>}</div>{p.renderable_html&&file?.name.endsWith('.zip')?<button type="button" className="primary" disabled={busy} onClick={importSelectedSource}>Import this HTML page <ArrowRight size={15}/></button>:<div className="category-project-note"><strong>Build/export required for visual editing.</strong><p>The source was analyzed, but it cannot be rendered as the original site without its compiled assets and runtime. {inspection.recommended_build_command} and upload the output ZIP.</p></div>}</div>)}</div>
+      </div>
+    </section>}
+    <div className="accom-native-template-card"><div><strong>Approved Accom master template</strong><p>Keep the complete original page available as the design reference while importing additional pages.</p></div><button type="button" className="outline" onClick={()=>setShowApprovedDesign(true)}>View original <ArrowRight size={15}/></button></div>
+    {!!templates.length&&<div className="category-template-library"><div className="category-subheading"><h3>Uploaded templates</h3><span>{templates.length} total</span></div><div className="category-template-list">{templates.map(t=><button key={t.id} type="button" className={selectedTemplate?.id===t.id?'selected':''} aria-pressed={selectedTemplate?.id===t.id} onClick={()=>openTemplate(t)}><strong>{t.name}</strong><small>{t.sections.length} sections · {t.fields.length} fields · {t.approved?'Approved':'Needs review'}</small></button>)}</div></div>}
    {selectedTemplate&&<div className="category-detection-results">
     <div className="category-detection-header"><div><span className="eyebrow">DETECTION RESULTS</span><h3>{selectedTemplate.name}</h3><p>Inspect all detected sections, field types, original values and edit permissions.</p></div><div className="category-detection-metrics"><div><strong>{selectedTemplate.sections.length}</strong><span>Sections</span></div><div><strong>{mappingFields.length}</strong><span>Fields</span></div><div><strong>{mappingFields.filter(f=>f.mode==='page').length}</strong><span>Editable</span></div></div></div>
     <div className="category-detection-layout">
