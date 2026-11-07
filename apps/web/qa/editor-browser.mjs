@@ -143,7 +143,7 @@ try {
     return frame?.contentDocument?.querySelector('#about h2')?.textContent?.includes('Designed around your student life');
   },null,{timeout:20000});
   await page.screenshot({path:'qa/evidence/prefilled-page-copy-edit.png'});
-  await page.getByRole('button',{name:'SEO settings'}).click();
+  await page.getByRole('button',{name:'SEO settings',exact:true}).click();
   assert(await page.locator('#accom-seo-settings').isVisible(),'SEO is a standalone section below the property fields');
   const seoSection=page.locator('#accom-seo-settings');
   await seoSection.scrollIntoViewIfNeeded();
