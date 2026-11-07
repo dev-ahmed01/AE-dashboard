@@ -23,9 +23,9 @@ def test_kingston_demo_preloaded_once_with_multiple_contracts(client):
     page=client.get(preview.json()['url'])
     assert page.status_code==200
     assert 'noindex,nofollow' in page.text
-    assert '/accom-template/app.js' in page.text
-    assert '/accom-template/bridge.js' in page.text
-    assert '/accom-template/assets/' in page.text
+    assert '/accom-template/original-master.js' in page.text
+    assert '/accom-template/original-integration.js' in page.text
+    assert 'assets/hero-bedroom.webp' in page.text
     assert 'accom-property-data' in page.text
     assert page.headers['cache-control']=='no-store'
     assert client.get('/property/iq-kingston?preview_token=invalid').status_code==404
@@ -41,11 +41,11 @@ def test_approved_template_uses_new_property_identity_and_saves_enquiries(client
     page=client.get('/property/'+p['slug'])
     assert page.status_code==200
     dom=BeautifulSoup(page.text,'html.parser')
-    assert dom.select_one('#property-title').get_text(strip=True)=='Manor House'
+    assert dom.select_one('.property-heading h1').get_text(strip=True)=='Manor House'
     assert 'iQ Kingston' not in dom.body.get_text(' ',strip=True)
     assert dom.select_one('script#accom-property-data')
-    assert dom.select_one('link[href="/accom-template/site.css"]')
-    assert dom.select_one('link[href="/accom-template/rail-refinement.css"]')
+    assert dom.select_one('style')
+    assert dom.select_one('script[src="/accom-template/original-master.js"]')
     submitted=client.post('/api/enquiries',json={'property_id':p['id'],'room_id':r['id'],
         'name':'Jordan Example','email':'jordan@example.org','consent':True,
         'message':'Please check my preferred contract'})
