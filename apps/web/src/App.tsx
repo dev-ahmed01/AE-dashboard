@@ -7,7 +7,7 @@ type Room={id:number;property_id:number;name:string;room_type:string;details:str
 type Pair={question:string;answer:string}
 type Landmark={name:string;detail:string}
 type Media={url:string;alt:string;category?:string;layout?:'regular'|'large'}
-type MasterField={key:string;section:string;kind:'text'|'href'|'src'|'alt';label:string;value:string}
+type MasterField={key:string;section:string;kind:'text'|'textarea'|'cta_label'|'cta_link'|'image'|'image_alt';label:string;group:string;value:string}
 type MasterSection={id:string;title:string;fields:MasterField[]}
 type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;rooms?:Room[]}
 type User={id:number;name:string;email:string;role:string}
@@ -354,7 +354,6 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const [seoOpen,setSeoOpen]=useState(false)
  const [contentSections,setContentSections]=useState<MasterSection[]>([])
  const [contentError,setContentError]=useState('')
- const [expandedCopy,setExpandedCopy]=useState<Record<string,boolean>>({})
  const [previewHtml,setPreviewHtml]=useState('')
  const [previewLoading,setPreviewLoading]=useState(false)
  const [previewError,setPreviewError]=useState('')
@@ -443,7 +442,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  ]
  const currentSection=sections.find(item=>item.id===activeSection)||sections[0]
  const copyFields=contentSections.find(section=>section.id===activeSection)?.fields||[]
- const selectedCopy=expandedCopy[activeSection]?copyFields:copyFields.slice(0,9)
+ const copyGroups=[...new Set(copyFields.map(field=>field.group))].map(name=>({name,fields:copyFields.filter(field=>field.group===name)}))
  useEffect(()=>{
   if(!source?.id)return
   let alive=true
@@ -452,6 +451,35 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   return()=>{alive=false}
  },[source?.id])
  const updateCopy=(key:string,value:string)=>setForm(f=>({...f,content_overrides:{...(f.content_overrides||{}),[key]:value}}))
+ const copyEditor=(<>
+       {copyFields.length>0&&<div className="accom-copy-panel">
+        <div className="accom-copy-panel-heading"><div><strong>Section content</strong><p>Only the fields belonging to this section. Existing values are already loaded.</p></div><span>{copyFields.length} fields</span></div>
+        {copyGroups.map(group=><section key={group.name} className="accom-field-frame" aria-label={group.name}>
+          <div className="accom-field-frame-title"><strong>{group.name}</strong><span>{group.fields.length} {group.fields.length===1?'field':'fields'}</span></div>
+          <div className="accom-field-frame-content">
+            {group.fields.map(field=>{
+              const value=form.content_overrides?.[field.key]??field.value
+              return <label key={field.key} className={'accom-copy-field accom-copy-'+field.kind}>
+                <span>{field.label}</span>
+                {field.kind==='textarea'?
+                  <textarea rows={3} value={value} onChange={e=>updateCopy(field.key,e.target.value)}/>:
+                  <input type="text" value={value} onChange={e=>updateCopy(field.key,e.target.value)}
+                    placeholder={field.kind==='image'?'https://… or upload a photo':field.kind==='cta_link'?'#rooms, /page or https://…':''}/>}
+                {field.kind==='image'&&<>
+                  {value&&<img className="accom-copy-photo" src={value} alt="Section image preview" loading="lazy"/>}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload section image" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{updateCopy(field.key,await uploadPhoto(file))}catch(err){setError((err as Error).message)}}}/>
+                </>}
+                {field.kind==='cta_link'&&<small>Only CTA destinations are editable. Leave navigation links managed by the template.</small>}
+                {field.kind==='cta_label'&&<small>Changes the button label; the original click behaviour is retained.</small>}
+              </label>
+            })}
+          </div>
+        </section>)}
+       </div>}
+       {contentError&&<p className="error" role="alert">{contentError}</p>}
+       {!copyFields.length&&!contentError&&<p className="accom-fields-help">{source?'Loading section content…':'Save your draft to load its section content.'}</p>}
+
+ </>)
  const previewSignature=JSON.stringify(form)
  useEffect(()=>{
   if(!source?.id){setPreviewHtml('');return}
@@ -558,6 +586,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
      <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
       <div className="accom-editor-fields-head"><span className="eyebrow">SECTION {currentSection.index}</span><h3>{currentSection.title}</h3><p>{currentSection.desc}</p></div>
       <div className="accom-editor-fields-body">
+       {activeSection!=='top'&&copyEditor}
 
        {activeSection==='top'&&<div className="accom-fields-group">
         <label>Property name<input required minLength={3} value={form.name} onChange={e=>set('name',e.target.value)}/></label>
@@ -604,17 +633,8 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
         <label>Review source URL<input type="url" value={form.review_source_url||''} onChange={e=>set('review_source_url',e.target.value)}/></label>
         <div className="form-grid"><label>Review score (0–5)<input type="number" min="0" max="5" step=".1" value={form.review_score??''} onChange={e=>set('review_score',e.target.value?Number(e.target.value):null)}/></label><label>Review count<input type="number" min="0" value={form.review_count??''} onChange={e=>set('review_count',e.target.value?Number(e.target.value):null)}/></label></div>
        </div>}
-       <div className="accom-copy-panel">
-        <div className="accom-copy-panel-heading"><div><strong>Page content</strong><p>Prefilled from the actual approved design. Edit any copy, image description or link below.</p></div><span>{copyFields.length} mapped</span></div>
-        {contentError?<p className="error" role="alert">{contentError}</p>:null}
-        {selectedCopy.map(field=><label key={field.key} className="accom-copy-field">
-          <span>{field.label}</span>
-          {field.kind==='text'&&field.value.length>120?<textarea rows={3} value={form.content_overrides?.[field.key]??field.value} onChange={e=>updateCopy(field.key,e.target.value)}/>:<input type="text" value={form.content_overrides?.[field.key]??field.value} onChange={e=>updateCopy(field.key,e.target.value)}/>}
-          {field.kind==='src'&&<input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload replacement image" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{updateCopy(field.key,await uploadPhoto(file))}catch(err){setError((err as Error).message)}}}/>}
-        </label>)}
-        {copyFields.length>9&&<button type="button" className="accom-copy-expand" onClick={()=>setExpandedCopy(v=>({...v,[activeSection]:!v[activeSection]}))}>{expandedCopy[activeSection]?'Show fewer fields':'Show all '+copyFields.length+' mapped fields'}</button>}
-        {!copyFields.length&&!contentError&&<p className="accom-fields-help">{source?'Loading page content or no additional static copy in this section.':'Save the property as a draft to extract the actual template text.'}</p>}
-       </div>
+       {activeSection==='top'&&copyEditor}
+
       </div>
      </main>
      <section className="accom-editor-preview" aria-label="Complete Accom property preview">

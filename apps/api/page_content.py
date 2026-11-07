@@ -33,6 +33,131 @@ IMAGE_URL = re.compile(r"^(https://[^\s<>\"']+|/(?:api/media/[0-9]+|accom-templa
 LINK_URL = re.compile(r"^(https://[^\s<>\"']+|/(?!/)[^\s<>\"']*|#[^\s<>\"']*|mailto:[^\s<>\"']+|tel:[+0-9 ()-]+)$", re.I)
 
 
+
+# Explicitly approved content fields. Navigation, breadcrumbs, technical UI,
+# pricing calculations and gallery controls are *not* page content fields.
+# The schema keys remain stable even when the template's DOM changes.
+SECTION_FIELDS = [
+    # property name, city, address and gallery are structured Property fields.
+    ("top", "hero.eyebrow", "Property category", ".property-tag", "text", "Property details", 0),
+    ("top", "hero.room_cta", "View rooms button", "#railRooms", "cta_label", "Page actions", 0),
+    ("top", "hero.enquiry_cta", "Enquiry button", ".booking-card .rail-controls [data-enquire]", "cta_label", "Page actions", 0),
+    ("overview", "overview.title", "Section heading", "#overview > h2", "text", "Headings & copy", 0),
+    ("about", "about.title", "Section heading", "#about h2", "text", "Headings & copy", 0),
+    ("about", "about.detail_1", "Property description · paragraph 1", "#about .story-detail", "textarea", "Headings & copy", 0),
+    ("about", "about.detail_2", "Property description · paragraph 2", "#about .story-detail", "textarea", "Headings & copy", 1),
+    ("about", "about.room_guide_title", "Room guide heading", "#about .story-room-guide h3", "text", "Room guide", 0),
+    ("about", "about.room_guide_note", "Room guide description", "#about .story-guide-note", "textarea", "Room guide", 0),
+    ("about", "about.rooms_cta_label", "Explore room types · button text", "#about .story-secondary-link", "cta_label", "Call to action", 0),
+    ("about", "about.rooms_cta_link", "Explore room types · destination", "#about .story-secondary-link", "cta_link", "Call to action", 0),
+    ("tours", "tours.title", "Section heading", "#tours h2", "text", "Headings & copy", 0),
+    ("tours", "tours.description", "Section description", "#tours .section-intro", "textarea", "Headings & copy", 0),
+    ("amenities", "amenities.title", "Section heading", "#amenities > h2", "text", "Headings & copy", 0),
+    ("amenities", "amenities.bills_title", "Bills calculator heading", "#amenities .bill-estimate-top h3", "text", "Bills calculator", 0),
+    ("amenities", "amenities.bills_intro", "Bills calculator explanation", "#amenities .bill-estimate-top p", "textarea", "Bills calculator", 0),
+    ("rooms", "rooms.title", "Section heading", "#rooms h2", "text", "Headings & copy", 0),
+    ("rooms", "rooms.description", "Section description", "#rooms .section-title-row p", "textarea", "Headings & copy", 0),
+    ("rules", "rules.title", "Section heading", "#rules > h2", "text", "Headings & copy", 0),
+    ("payments", "payments.title", "Section heading", "#payments > h2", "text", "Headings & copy", 0),
+    ("floorplan", "floorplan.title", "Section heading", "#floorplan > h2", "text", "Headings & copy", 0),
+    ("floorplan", "floorplan.card_title", "Request card heading", "#floorplan .inline-request strong", "text", "Request card", 0),
+    ("floorplan", "floorplan.card_description", "Request card description", "#floorplan .inline-request p", "textarea", "Request card", 0),
+    ("floorplan", "floorplan.cta_label", "Request floor plan · button text", "#floorplan [data-enquire]", "cta_label", "Call to action", 0),
+    ("neighbourhood", "neighbourhood.title", "Section heading", "#neighbourhood > h2", "text", "Headings & copy", 0),
+    ("neighbourhood", "neighbourhood.description", "Neighbourhood description", "#neighbourhood .neighbourhood-layout p", "textarea", "Headings & copy", 0),
+    ("neighbourhood", "neighbourhood.photo", "Neighbourhood image", "#neighbourhood .neighbourhood-layout img", "image", "Section image", 0),
+    ("neighbourhood", "neighbourhood.photo_alt", "Neighbourhood image description", "#neighbourhood .neighbourhood-layout img", "image_alt", "Section image", 0),
+    ("neighbourhood", "neighbourhood.cta_label", "View area · CTA text", "#neighbourhood a.source-link", "cta_label", "Call to action", 0),
+    ("neighbourhood", "neighbourhood.cta_link", "View area · destination", "#neighbourhood a.source-link", "cta_link", "Call to action", 0),
+    ("faqs", "faqs.title", "Section heading", "#faqs > h2", "text", "Headings & copy", 0),
+    ("location", "location.title", "Section heading", "#location > h2", "text", "Headings & copy", 0),
+    ("location", "location.description", "Landmarks introduction", "#location > .section-intro", "textarea", "Headings & copy", 0),
+    ("location", "location.cta_label", "Get directions · CTA text", "#location a.source-link", "cta_label", "Call to action", 0),
+    ("location", "location.cta_link", "Get directions · destination", "#location a.source-link", "cta_link", "Call to action", 0),
+    ("reviews", "reviews.title", "Section heading", "#reviews > h2", "text", "Headings & copy", 0),
+    ("reviews", "reviews.subheading", "Reviews introduction heading", "#reviews .review-preview-intro h3", "text", "Headings & copy", 0),
+]
+for index in range(4):
+    SECTION_FIELDS.extend([
+        ("payments", f"payments.card_{index + 1}.title", f"Payment card {index + 1} · title",
+         "#payments .payments-grid > div strong", "text", f"Payment card {index + 1}", index),
+        ("payments", f"payments.card_{index + 1}.description", f"Payment card {index + 1} · description",
+         "#payments .payments-grid > div p", "textarea", f"Payment card {index + 1}", index),
+    ])
+
+FIELD_BY_KEY = {item[1]: item for item in SECTION_FIELDS}
+
+
+def _find_field_node(soup, spec):
+    matches = soup.select(spec[3])
+    return matches[spec[6]] if len(matches) > spec[6] else None
+
+
+def _field_value(node, kind):
+    if kind == "cta_link":
+        return node.get("href", "")
+    if kind == "image":
+        src = node.get("src", "")
+        return src if IMAGE_URL.fullmatch(src) else ""
+    if kind == "image_alt":
+        return node.get("alt", "")
+    return node.get_text(" ", strip=True)
+
+
+def _replace_text(node, value):
+    # Replace text only, preserving icons, event hooks and the original frame.
+    children = [child for child in node.contents if isinstance(child, NavigableString)
+                and not isinstance(child, Comment) and str(child).strip()]
+    if children:
+        children[0].replace_with(value)
+        for child in children[1:]:
+            child.replace_with("")
+    else:
+        node.append(NavigableString(value))
+
+
+def _approved_structured(spec, value):
+    kind = spec[4]
+    if not isinstance(value, str) or len(value) > 2500:
+        return False
+    if kind == "cta_link":
+        return len(value) <= 2048 and bool(LINK_URL.fullmatch(value))
+    if kind == "image":
+        return not value or (len(value) <= 2048 and bool(IMAGE_URL.fullmatch(value)))
+    if kind == "image_alt":
+        return len(value) <= 240
+    return True
+
+
+def _apply_structured_field(node, kind, value):
+    if kind == "cta_link":
+        node["href"] = value
+        if value.startswith("https://"):
+            node["rel"] = "noopener noreferrer"
+        return
+    if kind == "image":
+        if not value:
+            node["src"] = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+        else:
+            node["src"] = value
+        node.attrs.pop("data-asset", None)
+        return
+    if kind == "image_alt":
+        node["alt"] = value
+        return
+    _replace_text(node, value)
+
+
+def _structured_fields(soup):
+    for spec in SECTION_FIELDS:
+        node = _find_field_node(soup, spec)
+        if node is None:
+            continue
+        section, key, label, selector, kind, group, index = spec
+        yield {"key": key, "section": section, "kind": kind, "label": label,
+               "group": group, "value": _field_value(node, kind)}, node, spec
+
+
 def _section(tag):
     for ancestor in [tag, *tag.parents]:
         if isinstance(ancestor, Tag) and ancestor.get("id") in _SECTION_IDS:
@@ -149,12 +274,19 @@ def apply_overrides(soup, values):
             tag[kind] = value
 
 
+    # New semantic fields are restricted to clearly identified page elements.
+    for field, node, spec in _structured_fields(soup):
+        value = safe.get(field["key"])
+        if value is not None and _approved_structured(spec, value):
+            _apply_structured_field(node, field["kind"], value)
+
+
 def describe(html):
     """The admin always receives current, prefilled values from its actual rendered DOM."""
     soup = BeautifulSoup(html, "html.parser")
     groups = [{"id": ident, "title": title, "fields": []} for ident, title in SECTIONS]
     by_id = {group["id"]: group for group in groups}
-    for field, _, _ in iter_fields(soup):
+    for field, _, _ in _structured_fields(soup):
         by_id[field["section"]]["fields"].append(field)
     return groups
 
@@ -163,8 +295,16 @@ def valid_overrides(values):
     if not isinstance(values, dict) or len(values) > 600:
         raise ValueError("Too many page-copy fields")
     for key, value in values.items():
-        if not isinstance(key, str) or len(key) > 500 or not re.fullmatch(r"[\w#:. >()-]+\|(text:[0-9]+|href|src|alt)", key):
+        if not isinstance(key, str) or len(key) > 500:
             raise ValueError("Invalid page-copy field identifier")
+        if key in FIELD_BY_KEY:
+            if not _approved_structured(FIELD_BY_KEY[key], value):
+                raise ValueError("Invalid section field value or CTA destination")
+            continue
+        # Preserve old saved page values for existing drafts, without exposing
+        # incidental navigation links in the new structured editor.
+        if not re.fullmatch(r"[\w#:. >()-]+\|(text:[0-9]+|href|src|alt)", key):
+            raise ValueError("Invalid legacy page-copy field identifier")
         kind = key.rsplit("|", 1)[-1].split(":", 1)[0]
         if not _approved(kind, value):
             raise ValueError("Invalid page-copy value or URL")
