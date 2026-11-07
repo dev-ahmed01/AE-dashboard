@@ -194,7 +194,7 @@ def test_property_seo_meta_and_sitemap(client):
     assert p['slug'] in client.get('/sitemap.xml').text
     changed=client.patch('/api/admin/properties/'+str(p['id']),headers=a,json={**p,'noindex':True})
     assert changed.status_code==200,changed.text
-    assert 'noindex,nofollow' in client.get('/property/'+p['slug']).text
+    assert 'noindex,follow' in client.get('/property/'+p['slug']).text
     assert p['slug'] not in client.get('/sitemap.xml').text
 
 def test_template_import_mapping_editorial_page_publish_and_script_removal(client):
