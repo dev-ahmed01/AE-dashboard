@@ -9,7 +9,7 @@ type Landmark={name:string;detail:string}
 type Media={url:string;alt:string;category?:string;layout?:'regular'|'large'}
 type MasterField={key:string;section:string;kind:'text'|'textarea'|'cta_label'|'cta_link'|'image'|'image_alt';label:string;group:string;value:string}
 type MasterSection={id:string;title:string;fields:MasterField[]}
-type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;nofollow?:boolean;canonical_override?:string;rooms?:Room[]}
+type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;nofollow?:boolean;noarchive?:boolean;noimageindex?:boolean;nosnippet?:boolean;static_sections?:string[];canonical_override?:string;rooms?:Room[]}
 type User={id:number;name:string;email:string;role:string}
 type LoginResult={token:string;user:User}
 type Enquiry={id:number;property:string;property_id:number;room_id:number|null;name:string;email:string;phone:string;university:string;move_in_date:string|null;message:string;status:string;assigned_to_id:number|null;created_at:string}
@@ -35,7 +35,7 @@ const fmt=(d?:string|null)=>d?new Date(d).toLocaleDateString('en-GB',{day:'numer
 const readPath=()=>window.location.pathname
 type Offer={title:string;description:string;valid_until?:string}
 type Review={name:string;quote:string;source_url:string}
-const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,nofollow:false,canonical_override:'',seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
+const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,nofollow:false,noarchive:false,noimageindex:false,nosnippet:false,static_sections:[] as string[],canonical_override:'',seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
 const blankRoom={name:'',room_type:'En suite',details:'',size_sqm:null as number|null,kitchen:'Shared',bathroom:'Private',price:null as number|null,currency:'GBP',price_period:'week',available_from:null as string|null,availability:'enquire',rate_checked_at:null as string|null,source_url:'',image_url:'',image_alt:'',image_layout:'regular' as 'regular'|'large',active:true,tenancies:[] as Tenancy[]}
 
 function Logo(){return <span className="brand"><span className="brand-icon">a<span>.</span></span><span className="brand-text">accom<small>BY EMLEN</small></span></span>}
@@ -351,6 +351,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const [form,setForm]=useState({...defaults,...(source||{}),gallery:(source?.gallery||[]).map((photo,i):Media=>({...photo,layout:photo.layout||(i===0?'large':'regular')}))})
  const [busy,setBusy]=useState(false),[error,setError]=useState('')
  const [activeSection,setActiveSection]=useState('top')
+ const [rightTab,setRightTab]=useState<'preview'|'seo'|'static'>('preview')
  const [contentSections,setContentSections]=useState<MasterSection[]>([])
  const [contentError,setContentError]=useState('')
  const [templateSample,setTemplateSample]=useState<Record<string,unknown>|null>(null)
@@ -534,7 +535,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   const obs=new ResizeObserver(resize)
   obs.observe(node)
   return()=>obs.disconnect()
- },[previewMode])
+ },[previewMode,rightTab])
  useEffect(()=>{
   if(!previewHtml)return
   const frame=previewFrameRef.current
@@ -580,7 +581,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
     </div>
     <div className="accom-editor-head-actions">
       <span className={'accom-editor-saving-state '+(dirty?'unsaved':'')}>{busy?'Saving…':dirty?'Unsaved changes':'Saved'}</span>
-      <button type="button" className="outline" onClick={()=>document.getElementById("accom-seo-settings")?.scrollIntoView({block:"start",behavior:"smooth"})}><Search size={15}/> SEO settings</button>
+      <button type="button" className="outline" onClick={()=>setRightTab("seo")}><Search size={15}/> SEO settings</button>
       <button type="button" className="outline" onClick={openFullPreview} disabled={!sourceReference&&!previewHtml}> <ImageIcon size={15}/> Preview</button>
       <button type="submit" form="accom-property-edit-form" className="primary" disabled={busy}><Check size={15}/>{busy?'Saving…':'Save draft'}</button>
     </div>
@@ -593,8 +594,8 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
        <div className="accom-editor-list-intro">
          <span className="accom-section-eyebrow">01 / PAGE CONTENT</span>
          <h2>Edit page sections</h2>
-         <p>Open any section to edit its content. Sections follow the original Accom property page order.</p>
-         <div className="accom-editor-list-meta"><span>{sections.length} content sections</span><button type="button" onClick={()=>document.getElementById('accom-seo-settings')?.scrollIntoView({block:'start',behavior:'smooth'})}>Go to SEO settings <ArrowRight size={12}/></button></div>
+         <p>Select a section to edit its content. Fields follow the approved property layout.</p>
+         <div className="accom-editor-list-meta"><span>{sections.length} sections</span><button type="button" onClick={()=>setRightTab('static')}>Static sections <ArrowRight size={12}/></button></div>
        </div>
        {(usingTemplateSample||form.is_demo)&&<div className="accom-template-sample-note" role="status">
         <strong>Demonstration content — verification required</strong>
@@ -611,12 +612,13 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
         return <section className={'accom-stack-section '+(expanded?'expanded':'')} id={'accom-section-'+item.id} key={item.id} aria-label={item.title}>
          <button type="button" className="accom-stack-toggle" aria-expanded={expanded} aria-controls={'accom-section-panel-'+item.id} onClick={()=>setActiveSection(expanded?'':item.id)}>
           <span className="accom-stack-index">{item.index}</span>
-          <span className="accom-stack-heading"><strong>{item.title}</strong><small>{detail} · Original page order</small></span>
+          <span className="accom-stack-heading"><strong>{item.title}</strong><small>{detail}</small></span>
           <ChevronDown className="accom-stack-chevron" size={17}/>
          </button>
          {expanded&&<div className="accom-stack-expanded" id={'accom-section-panel-'+item.id}>
            <div className="accom-stack-content-intro"><h3>{item.title}</h3><p>{item.desc}</p></div>
-           <div className="accom-editor-fields-body">
+           {form.static_sections.includes(item.id)&&<p className="accom-section-static-note">Static section · unlock it from the Static tab to edit.</p>}
+           <fieldset className="accom-section-lock-fieldset" disabled={form.static_sections.includes(item.id)}><div className="accom-editor-fields-body">
        {activeSection!=='top'&&copyEditor}
 
        {activeSection==='top'&&<div className="accom-edit-card-stack">
@@ -689,7 +691,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
        {activeSection==='top'&&copyEditor}
 
 
-           </div>
+           </div></fieldset>
          </div>}
         </section>
        })}
