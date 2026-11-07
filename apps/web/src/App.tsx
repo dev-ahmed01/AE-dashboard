@@ -612,13 +612,43 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
      <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
       <div className="accom-editor-fields-head"><span className="eyebrow">SECTION {currentSection.index}</span><h3>{currentSection.title}</h3><p>{currentSection.desc}</p></div>
       <div className="accom-editor-fields-body">
+       {usingTemplateSample&&<div className="accom-template-sample-note" role="status">
+        <strong>Unverified example content loaded</strong>
+        <p>These are examples from the approved Accom template, not verified details for {form.name}. Replace them before publishing. Nothing is saved until you choose Save draft.</p>
+       </div>}
+       {!usingTemplateSample&&templateSample&&!source?.published&&(activeSection==='top'||activeSection==='gallery')&&<div className="accom-template-optional">
+        <span>Want to start with the original template's illustrative content?</span>
+        <button type="button" onClick={()=>applyTemplateSample(templateSample)}>Fill blank fields with sample content</button>
+       </div>}
        {activeSection!=='top'&&copyEditor}
 
-       {activeSection==='top'&&<div className="accom-fields-group">
-        <label>Property name<input required minLength={3} value={form.name} onChange={e=>set('name',e.target.value)}/></label>
-        <div className="form-grid"><label>City<input required value={form.city} onChange={e=>set('city',e.target.value)}/></label><label>Country<input value={form.country} onChange={e=>set('country',e.target.value)}/></label><label>Postcode<input value={form.postcode} onChange={e=>set('postcode',e.target.value)}/></label><label>Nearby university<input value={form.university} onChange={e=>set('university',e.target.value)}/></label></div>
-        <label>Address<input value={form.address} onChange={e=>set('address',e.target.value)}/></label>
-        <RepeatableField title="Hero gallery photos" items={form.gallery} create={()=>({url:'',alt:'',category:'Rooms',layout:'regular' as const})} onChange={v=>set('gallery',v)} describe={(v,i)=>v.alt||v.category||('Picture '+(i+1))} help="Use approved photos. Choose Regular or Large for the original gallery layout." render={(item,change)=>media(item,change,'Property')}/>
+       {activeSection==='top'&&<div className="accom-edit-card-stack">
+        <section className="accom-edit-card" aria-label="Property identity">
+         <header className="accom-edit-card-heading"><span className="accom-edit-card-number">01</span><div><strong>Property identity</strong><p>Name displayed as the main H1 on the listing.</p></div></header>
+         <div className="accom-edit-card-body">
+          <label>Property name<input required minLength={3} value={form.name} onChange={e=>set('name',e.target.value)}/></label>
+         </div>
+        </section>
+        <section className="accom-edit-card" aria-label="Address and location">
+         <header className="accom-edit-card-heading"><span className="accom-edit-card-number">02</span><div><strong>Address & location</strong><p>Displayed below the property title and in the location section.</p></div></header>
+         <div className="accom-edit-card-body">
+          <label>Address<input value={form.address} onChange={e=>set('address',e.target.value)}/></label>
+          <div className="form-grid">
+           <label>City<input required value={form.city} onChange={e=>set('city',e.target.value)}/></label>
+           <label>Postcode<input value={form.postcode} onChange={e=>set('postcode',e.target.value)}/></label>
+           <label>Country<input value={form.country} onChange={e=>set('country',e.target.value)}/></label>
+           <label>Nearby university<input value={form.university} onChange={e=>set('university',e.target.value)}/></label>
+          </div>
+         </div>
+        </section>
+       </div>}
+       {activeSection==='gallery'&&<div className="accom-edit-card-stack">
+        <section className="accom-edit-card" aria-label="Gallery images">
+         <header className="accom-edit-card-heading"><span className="accom-edit-card-number">01</span><div><strong>Property photo gallery</strong><p>Each picture has its own image, alt text, category and tile size.</p></div></header>
+         <div className="accom-edit-card-body">
+          <RepeatableField title="Gallery photos" items={form.gallery} create={()=>({url:'',alt:'',category:'Rooms',layout:'regular' as const})} onChange={v=>set('gallery',v)} describe={(v,i)=>v.alt||v.category||('Picture '+(i+1))} help="Use approved photos. Regular or Large controls the five-tile gallery layout." render={(item,change)=>media(item,change,'Property')}/>
+         </div>
+        </section>
        </div>}
        {activeSection==='overview'&&<div className="accom-fields-group">
         <label>Overview / property description<textarea rows={4} value={form.description} onChange={e=>set('description',e.target.value)}/></label>
@@ -626,7 +656,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
        </div>}
        {activeSection==='tours'&&<div className="accom-fields-group">
         <label>Virtual tour link<input type="url" value={form.tour_url||''} onChange={e=>set('tour_url',e.target.value)}/></label>
-        <p className="accom-fields-help">Gallery photos are managed in Hero & gallery. This section includes the original photo-category and tour copy below.</p>
+        <p className="accom-fields-help">Main photos are managed in Photo gallery. This section includes the original photo-category and tour copy below.</p>
        </div>}
        {activeSection==='amenities'&&<div className="accom-fields-group">
         <RepeatableField title="Amenities" items={form.amenities} create={()=>''} onChange={v=>set('amenities',v)} describe={v=>v||'New amenity'} render={(v,change)=><label>Amenity<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
