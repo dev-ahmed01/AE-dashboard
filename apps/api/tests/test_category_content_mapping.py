@@ -16,10 +16,11 @@ def test_fifteen_visual_areas_prefilled_and_editable_without_touching_master(cli
         "rules", "payments", "floorplan", "neighbourhood", "faqs", "location",
         "reviews", "enquiry"
     ]
-    assert all(part["fields"] for part in result["sections"] if part["id"] != "gallery"), [
+    assert all(part["fields"] for part in result["sections"] if part["id"] not in ("top", "gallery")), [
         (part["id"], len(part["fields"])) for part in result["sections"]
     ]
     assert next(part for part in result["sections"] if part["id"] == "gallery")["fields"] == []
+    assert next(part for part in result["sections"] if part["id"] == "top")["fields"] == []
     # No incidental navigation, logo, breadcrumb or gallery UI labels are editable.
     all_fields = [field for part in result["sections"] for field in part["fields"]]
     assert all("group" in field and field["label"] for field in all_fields)
