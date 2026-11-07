@@ -506,6 +506,20 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const previewWidth=previewMode==='desktop'?1280:390
  
  return <div className="drawer-shade accom-editor-overlay" role="presentation">
+  {seoOpen&&<div className="accom-seo-modal-backdrop" role="presentation">
+   <section className="accom-seo-modal" role="dialog" aria-modal="true" aria-label="Page SEO settings">
+    <div className="accom-seo-modal-header"><div><span className="eyebrow">PAGE SETTINGS</span><h3>SEO & publishing</h3><p>Search metadata is separate from the 13 visible page sections.</p></div><button type="button" aria-label="Close SEO settings" onClick={()=>setSeoOpen(false)}><X size={17}/></button></div>
+    <div className="accom-seo-modal-fields">
+     <label>Page URL slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Auto-created from the property name"/></label>
+     <label>SEO title<input maxLength={250} value={form.seo_title||''} onChange={e=>set('seo_title',e.target.value)}/></label>
+     <label>Meta description<textarea rows={3} maxLength={400} value={form.meta_description||''} onChange={e=>set('meta_description',e.target.value)}/></label>
+     <label className="checkline"><input type="checkbox" checked={!!form.noindex} onChange={e=>set('noindex',e.target.checked)}/> Prevent indexing (noindex)</label>
+     <label className="checkline"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demo content — publishing blocked until verified</label>
+     <p className="accom-fields-help">This panel changes page metadata and draft status only. Publishing remains an administrator action in All Pages.</p>
+    </div>
+    <div className="accom-seo-modal-footer"><button type="button" className="primary compact" onClick={()=>setSeoOpen(false)}>Back to editor</button></div>
+   </section>
+  </div>}
   <div className="accom-editor-shell" role="region" aria-label="Accom Category page editor">
    <aside className="category-sidebar accom-editor-site-sidebar" aria-label="Content manager navigation">
     <div className="category-sidebar-brand"><Logo/><small>CONTENT MANAGER</small></div>
