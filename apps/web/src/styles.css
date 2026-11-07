@@ -427,3 +427,12 @@
  .accom-original-source-modal .category-preview-bar small{font-size:9px}
  .accom-original-page-frame{height:calc(100vh - 72px)}
 }
+
+.accom-master-template-row{
+  border:1px solid #f2d8ca!important;
+  background:linear-gradient(115deg,#fff7f2,#fff)!important
+}
+.accom-master-template-row .category-page-type{color:#bf372b;font-size:10px;letter-spacing:.08em;font-weight:800}
+.accom-master-row-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.accom-master-row-actions .outline{display:flex;align-items:center;gap:8px;padding:11px 14px;white-space:nowrap;font-size:11px}
+@media(max-width:680px){.accom-master-row-actions{width:100%}.accom-master-row-actions .outline{flex:1}}
