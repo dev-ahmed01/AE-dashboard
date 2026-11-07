@@ -341,7 +341,7 @@ function EditorialEditor({page,templates,close,onSaved}:{page:Editorial;template
 }
 
 const MASTER_PREVIEW_SELECTOR:Record<string,string> = {
- top:'#property-identity', gallery:'section.gallery', overview:'#overview', about:'#about', tours:'#tours',
+ top:'#top', gallery:'section.gallery', overview:'#overview', about:'#about', tours:'#tours',
  amenities:'#amenities', rooms:'#rooms', rules:'#rules', payments:'#payments',
  floorplan:'#floorplan', neighbourhood:'#neighbourhood', faqs:'#faqs',
  location:'#location', reviews:'#reviews', enquiry:'.cta-aside',
@@ -503,7 +503,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
         </section>)}
        </div>}
        {contentError&&<p className="error" role="alert">{contentError}</p>}
-       {!copyFields.length&&!contentError&&<p className="accom-fields-help">{source?'Loading section content…':'Save your draft to load its section content.'}</p>}
+       {!copyFields.length&&!contentError&&!['top','gallery'].includes(activeSection)&&<p className="accom-fields-help">{source?'Loading section content…':'Save your draft to load its section content.'}</p>}
 
  </>)
  const previewSignature=JSON.stringify(form)
@@ -612,9 +612,9 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
      <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
       <div className="accom-editor-fields-head"><span className="eyebrow">SECTION {currentSection.index}</span><h3>{currentSection.title}</h3><p>{currentSection.desc}</p></div>
       <div className="accom-editor-fields-body">
-       {usingTemplateSample&&<div className="accom-template-sample-note" role="status">
-        <strong>Unverified example content loaded</strong>
-        <p>These are examples from the approved Accom template, not verified details for {form.name}. Replace them before publishing. Nothing is saved until you choose Save draft.</p>
+       {(usingTemplateSample||form.is_demo)&&<div className="accom-template-sample-note" role="status">
+        <strong>Demonstration content — verification required</strong>
+        <p>{usingTemplateSample?'Examples from the approved template have filled empty draft fields. They are not verified property details and nothing is saved until you choose Save draft.':'This draft contains demonstration material. Confirm actual property details before publishing.'}</p>
        </div>}
        {!usingTemplateSample&&templateSample&&!source?.published&&(activeSection==='top'||activeSection==='gallery')&&<div className="accom-template-optional">
         <span>Want to start with the original template's illustrative content?</span>
