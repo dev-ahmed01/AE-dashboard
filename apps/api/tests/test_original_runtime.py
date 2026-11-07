@@ -37,7 +37,7 @@ def test_draft_is_original_master_not_the_old_simplified_template():
     assert dom.select_one("#galleryDialog")
     assert dom.select_one("#compareDialog")
     assert dom.select_one("#enquiryForm")
-    assert dom.select_one(".bill-calculator")
+    assert dom.select_one("#billInputs")
     assert dom.select_one("#roomList")
     assert dom.select_one('script[src="/accom-template/original-master.js"]')
     assert dom.select_one('script[src="/accom-template/original-integration.js"]')
@@ -75,7 +75,7 @@ def test_public_missing_images_never_uses_sample_kingston_photography():
     assert dom.select_one(".accom-master-photo-placeholder")
     assert not dom.select_one(".accom-master-preview-note")
     assert "iQ Kingston" not in dom.body.get_text(" ", strip=True)
-    assert dom.select_one("meta[name=robots")["content"] == "noindex,nofollow"
+    assert dom.select_one("meta[name=robots]")["content"] == "noindex,nofollow"
 
 
 def test_original_large_photo_switch_is_respected():
