@@ -9,7 +9,7 @@ type Landmark={name:string;detail:string}
 type Media={url:string;alt:string;category?:string;layout?:'regular'|'large'}
 type MasterField={key:string;section:string;kind:'text'|'textarea'|'cta_label'|'cta_link'|'image'|'image_alt';label:string;group:string;value:string}
 type MasterSection={id:string;title:string;fields:MasterField[]}
-type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;nofollow?:boolean;canonical_override?:string;rooms?:Room[]}
+type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;nofollow?:boolean;noarchive?:boolean;noimageindex?:boolean;nosnippet?:boolean;static_sections?:string[];canonical_override?:string;rooms?:Room[]}
 type User={id:number;name:string;email:string;role:string}
 type LoginResult={token:string;user:User}
 type Enquiry={id:number;property:string;property_id:number;room_id:number|null;name:string;email:string;phone:string;university:string;move_in_date:string|null;message:string;status:string;assigned_to_id:number|null;created_at:string}
@@ -35,7 +35,7 @@ const fmt=(d?:string|null)=>d?new Date(d).toLocaleDateString('en-GB',{day:'numer
 const readPath=()=>window.location.pathname
 type Offer={title:string;description:string;valid_until?:string}
 type Review={name:string;quote:string;source_url:string}
-const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,nofollow:false,canonical_override:'',seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
+const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,nofollow:false,noarchive:false,noimageindex:false,nosnippet:false,static_sections:[] as string[],canonical_override:'',seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
 const blankRoom={name:'',room_type:'En suite',details:'',size_sqm:null as number|null,kitchen:'Shared',bathroom:'Private',price:null as number|null,currency:'GBP',price_period:'week',available_from:null as string|null,availability:'enquire',rate_checked_at:null as string|null,source_url:'',image_url:'',image_alt:'',image_layout:'regular' as 'regular'|'large',active:true,tenancies:[] as Tenancy[]}
 
 function Logo(){return <span className="brand"><span className="brand-icon">a<span>.</span></span><span className="brand-text">accom<small>BY EMLEN</small></span></span>}
@@ -351,6 +351,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const [form,setForm]=useState({...defaults,...(source||{}),gallery:(source?.gallery||[]).map((photo,i):Media=>({...photo,layout:photo.layout||(i===0?'large':'regular')}))})
  const [busy,setBusy]=useState(false),[error,setError]=useState('')
  const [activeSection,setActiveSection]=useState('top')
+ const [rightTab,setRightTab]=useState<'preview'|'seo'|'static'>('preview')
  const [contentSections,setContentSections]=useState<MasterSection[]>([])
  const [contentError,setContentError]=useState('')
  const [templateSample,setTemplateSample]=useState<Record<string,unknown>|null>(null)
@@ -534,7 +535,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   const obs=new ResizeObserver(resize)
   obs.observe(node)
   return()=>obs.disconnect()
- },[previewMode])
+ },[previewMode,rightTab])
  useEffect(()=>{
   if(!previewHtml)return
   const frame=previewFrameRef.current
@@ -576,11 +577,11 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
     <div className="accom-editor-title">
      <button type="button" className="accom-editor-back" onClick={safeClose}><ChevronLeft size={15}/> Back to pages</button>
      <div className="accom-editor-title-line"><h1>{form.name||'Untitled accommodation'}</h1><span className="accom-editor-status">{source?.published?'Published':'Draft'}</span></div>
-     <p>Accommodation Page <span aria-hidden="true">·</span> /{form.slug||'new-page'}/</p>
+
     </div>
     <div className="accom-editor-head-actions">
       <span className={'accom-editor-saving-state '+(dirty?'unsaved':'')}>{busy?'Saving…':dirty?'Unsaved changes':'Saved'}</span>
-      <button type="button" className="outline" onClick={()=>document.getElementById("accom-seo-settings")?.scrollIntoView({block:"start",behavior:"smooth"})}><Search size={15}/> SEO settings</button>
+      <button type="button" className="outline" onClick={()=>setRightTab("seo")}><Search size={15}/> SEO settings</button>
       <button type="button" className="outline" onClick={openFullPreview} disabled={!sourceReference&&!previewHtml}> <ImageIcon size={15}/> Preview</button>
       <button type="submit" form="accom-property-edit-form" className="primary" disabled={busy}><Check size={15}/>{busy?'Saving…':'Save draft'}</button>
     </div>
@@ -593,8 +594,8 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
        <div className="accom-editor-list-intro">
          <span className="accom-section-eyebrow">01 / PAGE CONTENT</span>
          <h2>Edit page sections</h2>
-         <p>Open any section to edit its content. Sections follow the original Accom property page order.</p>
-         <div className="accom-editor-list-meta"><span>{sections.length} content sections</span><button type="button" onClick={()=>document.getElementById('accom-seo-settings')?.scrollIntoView({block:'start',behavior:'smooth'})}>Go to SEO settings <ArrowRight size={12}/></button></div>
+         <p>Select a section to edit its content. Fields follow the approved property layout.</p>
+         <div className="accom-editor-list-meta"><span>{sections.length} sections</span><button type="button" onClick={()=>setRightTab('static')}>Static sections <ArrowRight size={12}/></button></div>
        </div>
        {(usingTemplateSample||form.is_demo)&&<div className="accom-template-sample-note" role="status">
         <strong>Demonstration content — verification required</strong>
@@ -611,12 +612,13 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
         return <section className={'accom-stack-section '+(expanded?'expanded':'')} id={'accom-section-'+item.id} key={item.id} aria-label={item.title}>
          <button type="button" className="accom-stack-toggle" aria-expanded={expanded} aria-controls={'accom-section-panel-'+item.id} onClick={()=>setActiveSection(expanded?'':item.id)}>
           <span className="accom-stack-index">{item.index}</span>
-          <span className="accom-stack-heading"><strong>{item.title}</strong><small>{detail} · Original page order</small></span>
+          <span className="accom-stack-heading"><strong>{item.title}</strong><small>{detail}</small></span>
           <ChevronDown className="accom-stack-chevron" size={17}/>
          </button>
          {expanded&&<div className="accom-stack-expanded" id={'accom-section-panel-'+item.id}>
            <div className="accom-stack-content-intro"><h3>{item.title}</h3><p>{item.desc}</p></div>
-           <div className="accom-editor-fields-body">
+           {form.static_sections.includes(item.id)&&<p className="accom-section-static-note">Static section · unlock it from the Static tab to edit.</p>}
+           <fieldset className="accom-section-lock-fieldset" disabled={form.static_sections.includes(item.id)}><div className="accom-editor-fields-body">
        {activeSection!=='top'&&copyEditor}
 
        {activeSection==='top'&&<div className="accom-edit-card-stack">
@@ -689,11 +691,16 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
        {activeSection==='top'&&copyEditor}
 
 
-           </div>
+           </div></fieldset>
          </div>}
         </section>
        })}
      </div>
+     <aside className="accom-editor-right-panel" aria-label="Page tools">
+      <div className="accom-editor-right-tabs" role="tablist" aria-label="Editor tools">
+       {(['preview','seo','static'] as const).map(tab=><button key={tab} type="button" role="tab" aria-selected={rightTab===tab} className={rightTab===tab?'selected':''} onClick={()=>setRightTab(tab)}>{tab==='preview'?'Preview':tab==='seo'?'SEO':'Static'}</button>)}
+      </div>
+      {rightTab==='preview'&&<>
      <section className="accom-editor-preview" aria-label="Complete Accom property preview">
       <div className="accom-editor-preview-head">
         <div className="accom-editor-preview-label"><h3>Live Preview</h3><small>{sourceReference?'Approved original page · read-only':'Actual property layout · updates as you type'}</small></div>
@@ -714,50 +721,56 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
       </div>
       <div className="accom-editor-preview-foot"><span>{sourceReference?'Original template · select Draft to see edits.':previewLoading?'Updating preview…':previewError||'Preview only · Changes are not published'}</span></div>
      </section>
+
+      </>}
+      {rightTab==='seo'&&<section className="accom-right-seo" aria-label="SEO Settings">
+       <div className="accom-right-panel-intro"><strong>SEO settings</strong><span>Search appearance and crawler rules</span></div>
+       <div className="accom-right-panel-scroll">
+        <label className="accom-right-label">SEO title <small>{form.seo_title.length}/250</small>
+         <input value={form.seo_title} maxLength={250} onChange={e=>set('seo_title',e.target.value)} placeholder="Search result title"/>
+        </label>
+        <label className="accom-right-label">Meta description <small>{form.meta_description.length}/400</small>
+         <textarea rows={3} value={form.meta_description} maxLength={400} onChange={e=>set('meta_description',e.target.value)} placeholder="Short description for search results"/>
+        </label>
+        <div className="accom-robots-panel" aria-label="Robots Meta">
+         <strong>Robots meta</strong>
+         <div className="accom-robots-options">
+          <label><input type="checkbox" checked={!form.noindex} onChange={()=>set('noindex',false)}/> Index</label>
+          <label><input type="checkbox" checked={form.noindex} onChange={()=>set('noindex',true)}/> No Index</label>
+          <label><input type="checkbox" checked={form.nofollow} onChange={e=>set('nofollow',e.target.checked)}/> Nofollow</label>
+          <label title="Noarchive is ignored by Google Search but may be used by other engines."><input type="checkbox" checked={form.noarchive} onChange={e=>set('noarchive',e.target.checked)}/> No Archive</label>
+          <label><input type="checkbox" checked={form.noimageindex} onChange={e=>set('noimageindex',e.target.checked)}/> No Image Index</label>
+          <label><input type="checkbox" checked={form.nosnippet} onChange={e=>set('nosnippet',e.target.checked)}/> No Snippet</label>
+         </div>
+         <small>Draft and demonstration pages always remain noindex, nofollow. No Archive is not supported by Google Search.</small>
+        </div>
+        <label className="accom-right-label">Canonical URL (optional)
+         <input type="url" value={form.canonical_override} onChange={e=>set('canonical_override',e.target.value)} placeholder="https://example.com/page"/>
+         <small>Leave blank for the automatic canonical URL.</small>
+        </label>
+        <div className="accom-right-search-preview" aria-label="Search result preview">
+         <span>Search result preview</span>
+         <small>{seoPreviewUrl}</small>
+         <strong>{seoPreviewTitle}</strong>
+         <p>{form.nosnippet?'Text snippet disabled by the No Snippet rule.':seoPreviewDescription}</p>
+        </div>
+       </div>
+      </section>}
+      {rightTab==='static'&&<section className="accom-right-static" aria-label="Static section settings">
+       <div className="accom-right-panel-intro"><strong>Static sections</strong><span>Keep approved content unchanged</span></div>
+       <div className="accom-right-panel-scroll">
+        <p className="accom-right-static-note">Mark sections as static to lock their editing fields. You can still preview the content.</p>
+        <div className="accom-static-list">
+         {sections.map(item=><label className="accom-static-row" key={item.id}>
+          <span><strong>{item.index} / {item.title}</strong><small>{form.static_sections.includes(item.id)?'Static · editing locked':'Editable'}</small></span>
+          <input type="checkbox" checked={form.static_sections.includes(item.id)} onChange={e=>set('static_sections',e.target.checked?[...form.static_sections,item.id]:form.static_sections.filter(id=>id!==item.id))} aria-label={'Static '+item.title}/>
+          <span className="accom-static-switch" aria-hidden="true"/>
+         </label>)}
+        </div>
+       </div>
+      </section>}
+     </aside>
      </div>
-     <section className="accom-editor-seo-section" id="accom-seo-settings" aria-label="SEO Settings">
-      <div className="accom-seo-section-intro">
-       <span className="accom-section-eyebrow">02 / SEARCH</span>
-       <h2>SEO Settings</h2>
-       <p>Set the information search engines use for this page.</p>
-      </div>
-      <div className="accom-seo-settings-fields">
-       <label>SEO title <span className="accom-seo-field-count">{form.seo_title.length}/250</span>
-        <input maxLength={250} value={form.seo_title} onChange={e=>set('seo_title',e.target.value)} placeholder="Your unique search title"/>
-       </label>
-       <label>Meta description <span className="accom-seo-field-count">{form.meta_description.length}/400</span>
-        <textarea rows={3} maxLength={400} value={form.meta_description} onChange={e=>set('meta_description',e.target.value)} placeholder="Brief, useful page description"/>
-       </label>
-       <div className="accom-seo-switch-row">
-        <label className="accom-seo-switch">
-         <span className="accom-seo-switch-copy"><strong>Allow indexing</strong><small>{form.noindex?'Off · Ask search engines not to show this page in results.':'On · Allow search engines to index this page when it is published.'}</small></span>
-         <input type="checkbox" role="switch" aria-label="Allow indexing" checked={!form.noindex} onChange={e=>set('noindex',!e.target.checked)}/>
-         <span className="accom-seo-switch-track" aria-hidden="true"><i/></span>
-        </label>
-        <label className="accom-seo-switch">
-         <span className="accom-seo-switch-copy"><strong>Follow links</strong><small>{form.nofollow?'Off · Ask search engines not to follow links.':'On · Allow search engines to follow links on this page.'}</small></span>
-         <input type="checkbox" role="switch" aria-label="Follow links" checked={!form.nofollow} onChange={e=>set('nofollow',!e.target.checked)}/>
-         <span className="accom-seo-switch-track" aria-hidden="true"><i/></span>
-        </label>
-       </div>
-       <label>Canonical override (optional)
-        <input value={form.canonical_override} onChange={e=>set('canonical_override',e.target.value)} placeholder="Automatic self-canonical — or enter an https:// URL"/>
-        <small>Leave blank to use the property's own canonical URL.</small>
-       </label>
-       <div className="accom-seo-snippet" aria-label="Search result preview">
-        <span>Search result preview</span>
-        <p className="accom-seo-snippet-url">{seoPreviewUrl}</p>
-        <strong>{seoPreviewTitle}</strong>
-        <p>{seoPreviewDescription}</p>
-        <small>Search engines can rewrite how your page appears.</small>
-       </div>
-       <div className="accom-seo-publishing">
-        <label>Page URL slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Automatically created from property name"/></label>
-        <label className="accom-seo-demo-checkbox"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demonstration content — publishing remains blocked until verified</label>
-        <p>SEO settings are saved with your draft. Publishing is a separate action in All Pages; a draft or demonstration page stays non-indexable even when Allow indexing is on.</p>
-       </div>
-      </div>
-     </section>
     </div>
    </form>
   </div>

@@ -61,7 +61,8 @@ try {
   assert.equal(await page.locator('.accom-editor-sidebar').count(),0,'Remove the extra Edit sections sidebar entirely');
   assert(stacked.x+stacked.width <= preview.x+3,'Stacked forms must not overlap preview');
   assert.equal(await page.locator('.accom-stack-section').count(),15,'All fifteen property sections must be visible in page order');
-  assert.equal(await page.locator('.accom-editor-seo-section').count(),1,'SEO must be a separate full-width section under the content');
+  assert.equal(await page.locator('.accom-editor-right-panel').count(),1,'Preview, SEO, and Static must share the right-hand panel');
+  assert.equal(await page.locator('.accom-editor-seo-section').count(),0,'No duplicated full-width SEO area');
   assert(preview.width>=300,'Preview is too narrow for desktop');
   assert(preview.height>=440,'Preview must be tall enough to inspect page details');
   assert(await page.locator('.accom-editor-topbar').isVisible(),'Breadcrumb top bar should match Workspace dashboard');
@@ -144,26 +145,40 @@ try {
   },null,{timeout:20000});
   await page.screenshot({path:'qa/evidence/prefilled-page-copy-edit.png'});
   await page.getByRole('button',{name:'SEO settings',exact:true}).click();
-  assert(await page.locator('#accom-seo-settings').isVisible(),'SEO is a standalone section below the property fields');
-  const seoSection=page.locator('#accom-seo-settings');
-  await seoSection.scrollIntoViewIfNeeded();
-  const seoLayout=await page.evaluate(()=>{
-    const seo=document.querySelector('#accom-seo-settings').getBoundingClientRect();
-    const preview=document.querySelector('.accom-editor-preview').getBoundingClientRect();
-    return {seoTop:seo.top,previewBottom:preview.bottom};
+  assert(await page.getByRole('tab',{name:'SEO'}).getAttribute('aria-selected')==='true','SEO tab opens on right');
+  const seoPanel=page.locator('.accom-right-seo');
+  await seoPanel.getByRole('textbox',{name:/SEO title/}).fill('Campus ready student accommodation');
+  await seoPanel.getByRole('textbox',{name:/Meta description/}).fill('Find genuine accommodation details and clear pricing.');
+  await seoPanel.getByRole('textbox',{name:/Canonical URL/}).fill('https://example.org/student-living/test');
+  await seoPanel.getByRole('checkbox',{name:'No Index'}).check();
+  assert(await seoPanel.getByRole('checkbox',{name:'Index',exact:true}).isChecked()===false,'Index and No Index are exclusive');
+  await seoPanel.getByRole('checkbox',{name:'Index',exact:true}).check();
+  await seoPanel.getByRole('checkbox',{name:'Nofollow'}).check();
+  await seoPanel.getByRole('checkbox',{name:'No Archive'}).check();
+  await seoPanel.getByRole('checkbox',{name:'No Image Index'}).check();
+  await seoPanel.getByRole('checkbox',{name:'No Snippet'}).check();
+  assert.equal(await page.locator('.accom-editor-right-panel').count(),1,'SEO stays on right');
+  assert.equal(await page.locator('.accom-editor-workspace input[placeholder*="slug"]').count(),0,'URL slug removed from the editor');
+  await page.screenshot({path:'qa/evidence/seo-right-panel.png'});
+
+  await page.getByRole('tab',{name:'Static'}).click();
+  const staticPanel=page.locator('.accom-right-static');
+  assert.equal(await staticPanel.locator('.accom-static-row').count(),15,'Static tab shows all page sections');
+  await staticPanel.getByRole('checkbox',{name:'Static Payments & fees'}).check();
+  const staticRow=staticPanel.locator('.accom-static-row:has(input[aria-label="Static Payments & fees"])');
+  const staticRowLayout=await staticRow.evaluate(el=>{
+    const label=el.querySelector('span:first-child').getBoundingClientRect();
+    const track=el.querySelector('.accom-static-switch').getBoundingClientRect();
+    return {labelRight:label.right,trackLeft:track.left,labelTop:label.top,trackTop:track.top,trackBottom:track.bottom,labelBottom:label.bottom};
   });
-  assert(seoLayout.previewBottom<=seoLayout.seoTop+3,
-    'Sticky preview must end before the full-width SEO card: '+JSON.stringify(seoLayout));
-  assert.equal(await seoSection.getByRole('switch').count(),2,'Independent indexing and follow controls');
-  await seoSection.getByRole('switch',{name:'Allow indexing'}).check();
-  await seoSection.getByRole('switch',{name:'Follow links'}).uncheck();
-  await seoSection.getByRole('textbox',{name:'SEO title'}).fill('Campus ready student accommodation');
-  await seoSection.getByRole('textbox',{name:'Meta description'}).fill('Find your next home, with genuine accommodation details and clear pricing.');
-  await seoSection.getByRole('textbox',{name:'Canonical override (optional)'}).fill('https://example.org/student-living/test');
-  assert(await seoSection.getByText('Campus ready student accommodation',{exact:true}).isVisible(),'SEO snippet uses live inputs');
-  const pageCards=await page.locator('.accom-stack-section').count();
-  assert.equal(pageCards,15,'SEO is not mixed into the visual content section list');
-  await page.screenshot({path:'qa/evidence/seo-section-workspace-style.png'});
+  assert(staticRowLayout.trackLeft>=staticRowLayout.labelRight-4,
+    'Static switches should align to the right of row text: '+JSON.stringify(staticRowLayout));
+  await page.getByRole('button',{name:/Payments & fees/}).click();
+  assert((await page.locator('#accom-section-payments fieldset').getAttribute('disabled'))!==null,'Static sections must apply the native disabled fieldset attribute');
+  assert(await page.locator('#accom-section-payments fieldset button').first().isDisabled(),'Locked section action buttons must be disabled');
+  await page.screenshot({path:'qa/evidence/static-right-panel.png'});
+  await page.getByRole('tab',{name:'Preview'}).click();
+  assert(await page.locator('iframe[title="Live property page visual preview"]').count()===1,'Preview remains accessible after SEO and Static');
   await page.getByRole('button',{name:/Property identity/}).click();
   assert.equal(await page.locator('.accom-stack-section').count(),15);
 
@@ -226,7 +241,7 @@ try {
   assert(await inspection.getByText('Build/export required for visual editing.').isVisible(),'Dynamic component cannot be represented as pixel-perfect HTML without build');
   await page.screenshot({path:'qa/evidence/category-source-inspection.png'});
   assert.deepEqual(errors,[],'Unexpected uncaught page exceptions');
-  console.log('PASS: Workspace-style stacked sections, inline SEO toggles/canonical, original live preview, draft save, mobile and project inspection');
+  console.log('PASS: stacked sections with right Preview/SEO/Static tabs, robots options, lock fields, saved draft, mobile and project inspection');
 } finally {
   await browser.close();
 }
