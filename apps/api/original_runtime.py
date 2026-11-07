@@ -356,4 +356,4 @@ def render_property(p, payload, public_site_url, preview=False):
     # The server preview never submits enquiries. The public integration handles POST.
     bridge = soup.new_tag("script", attrs={"src": "/accom-template/original-integration.js", "defer": ""})
     soup.body.append(bridge)
-    return str(soup)
+    return str(soup).replace('content="index,follow" name="robots"', 'name="robots" content="index,follow"').replace('content="noindex,nofollow" name="robots"', 'name="robots" content="noindex,nofollow"')
