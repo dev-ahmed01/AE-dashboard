@@ -71,7 +71,7 @@ $$('.modal-layer').forEach(el=>{el.addEventListener('click',event=>{if(event.tar
 function photosInCategory(){return photos.map((entry,index)=>({...entry,index})).filter(entry=>photoCategory==='all'||entry.category===photoCategory);}
 function paintPhotos(){const list=photosInCategory();if(!list.length)return;if(!list.some(entry=>entry.index===photoIndex))photoIndex=list[0].index;
   const item=photos[photoIndex];$('#photoActive').src=item.image;$('#photoActive').alt=item.alt;$('#photoTitle').textContent=item.title;$('#photoIndex').textContent=`${list.findIndex(entry=>entry.index===photoIndex)+1} of ${list.length}`;
-  $('#photoThumbnails').innerHTML=list.map(entry=>`<button type="button" data-thumb="${entry.index}" class="${entry.index===photoIndex?'selected':''}" aria-pressed="${entry.index===photoIndex}" aria-label="View ${entry.title}"><img src="${entry.image}" alt=""></button>`).join('');
+  $('#photoThumbnails').innerHTML=list.map(entry=>`<button type="button" data-thumb="${entry.index}" class="${entry.index===photoIndex?'selected':''}" aria-pressed="${entry.index===photoIndex}" aria-label="View ${escapeMarkup(entry.title)}"><img src="${escapeMarkup(entry.image)}" alt=""></button>`).join('');
   $$('[data-thumb]',$('#photoThumbnails')).forEach(button=>button.addEventListener('click',()=>{photoIndex=Number(button.dataset.thumb);paintPhotos();}));
   $('[data-thumb="'+photoIndex+'"]')?.scrollIntoView({block:'nearest',inline:'nearest'});
 }
