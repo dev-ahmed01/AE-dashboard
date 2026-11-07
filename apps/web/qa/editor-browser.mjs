@@ -84,6 +84,7 @@ try {
     'Original sticky pricing sidebar must be intact');
   assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('.gallery-tile').count(),5,
     'Unfilled admin preview displays original sample gallery, explicitly labeled as a template example');
+  await page.screenshot({path:'qa/evidence/exact-master-draft-preview-loaded.png'});
 
 
   await page.locator('.accom-editor-preview-controls').getByRole('button',{name:'Original',exact:true}).click();
