@@ -88,7 +88,7 @@ try {
     return iframe?.contentDocument?.querySelector('#property-title')?.textContent==='Visual QA Updated Residence';
   },null,{timeout:20000});
 
-  await page.getByRole('button',{name:/02 Property photos/}).click();
+  await page.getByRole('button',{name:/Property photos/}).click();
   await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).click();
   await page.getByPlaceholder('https://example.com/photo.webp or upload below').fill('/accom-template/assets/ensuite.webp');
   await page.getByPlaceholder('Describe the actual image').fill('Illustrative accommodation interior');
@@ -99,7 +99,7 @@ try {
   },null,{timeout:20000});
   await page.screenshot({path:'qa/evidence/editor-desktop.png'});
 
-  await page.getByRole('button',{name:/03 Highlights & amenities/}).click();
+  await page.getByRole('button',{name:/Highlights & amenities/}).click();
   await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).first().click();
   await page.getByRole('textbox',{name:'Highlight text'}).fill('Premium student support');
   await page.waitForFunction(()=>{
@@ -109,7 +109,7 @@ try {
 
   await page.setViewportSize({width:390,height:844});
   await page.waitForFunction(()=>document.querySelector('.accom-editor-device-toggle button:last-child')?.getAttribute('aria-pressed')==='true',{timeout:10000});
-  await page.getByRole('button',{name:/02 Property photos/}).click();
+  await page.getByRole('button',{name:/Property photos/}).click();
   await page.locator('.accom-editor-preview').scrollIntoViewIfNeeded();
   await page.screenshot({path:'qa/evidence/editor-mobile.png'});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
