@@ -31,7 +31,8 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numer
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 from original_runtime import render_property
-from page_content import describe, valid_overrides
+from page_content import describe, valid_overrides, SECTIONS
+from template_sample import template_sample, should_autofill_template
 from editor_preview import render_draft
 from demo_seed import seed_kingston
 from project_inspector import inspect_project, extract_html_from_zip
@@ -898,7 +899,17 @@ def property_content_map(id:int, user:User=Depends(require_admin), db:Session=De
     p=db.get(Property,id)
     if not p:raise HTTPException(404,'Page not found')
     html=render_property(p,prop_json(p,detail=True,staff=True),PUBLIC_SITE_URL,preview=True)
-    return {'sections':describe(html),'source':'approved-accom-master','total_sections':13}
+    is_unpublished=not p.published
+    return {
+        'sections': describe(html),
+        'source': 'approved-accom-master',
+        'total_sections': len(SECTIONS),
+        # Example data is only returned for unpublished pages; it is never
+        # written to a property by this read-only endpoint.
+        'template_sample': template_sample() if is_unpublished else None,
+        'auto_prefill_template': should_autofill_template(p) if is_unpublished else False,
+        'template_sample_unverified': True,
+    }
 
 
 @app.post('/api/admin/properties/{id}/preview-draft',response_class=HTMLResponse)

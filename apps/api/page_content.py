@@ -8,19 +8,21 @@ import re
 from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 
 SECTIONS = [
-    ("top", "Hero & gallery"),
+    ("top", "Property identity"),
+    ("gallery", "Property gallery"),
     ("overview", "Residence overview"),
-    ("about", "Property details"),
-    ("tours", "Photo categories & tour"),
+    ("about", "Living experience"),
+    ("tours", "Photos & virtual tours"),
     ("amenities", "Amenities & bills"),
-    ("rooms", "Rooms & price choices"),
+    ("rooms", "Rooms & tenancy plans"),
     ("rules", "House rules"),
     ("payments", "Payments & fees"),
     ("floorplan", "Floor plans"),
     ("neighbourhood", "Neighbourhood"),
     ("faqs", "Frequently asked questions"),
-    ("location", "Landmarks & location"),
+    ("location", "Location & landmarks"),
     ("reviews", "Student reviews"),
+    ("enquiry", "Enquiry & CTA panel"),
 ]
 _SECTION_IDS = {key for key, _ in SECTIONS}
 TEXT_TAGS = frozenset(("h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "strong", "em", "small",
@@ -40,8 +42,8 @@ LINK_URL = re.compile(r"^(https://[^\s<>\"']+|/(?!/)[^\s<>\"']*|#[^\s<>\"']*|mai
 SECTION_FIELDS = [
     # property name, city, address and gallery are structured Property fields.
     ("top", "hero.eyebrow", "Property category", ".property-tag", "text", "Property details", 0),
-    ("top", "hero.room_cta", "View rooms button", "#railRooms", "cta_label", "Page actions", 0),
-    ("top", "hero.enquiry_cta", "Enquiry button", ".booking-card .rail-controls [data-enquire]", "cta_label", "Page actions", 0),
+    ("enquiry", "hero.room_cta", "View rooms button", "#railRooms", "cta_label", "Enquiry actions", 0),
+    ("enquiry", "hero.enquiry_cta", "Enquiry button", ".booking-card .rail-controls [data-enquire]", "cta_label", "Enquiry actions", 0),
     ("overview", "overview.title", "Section heading", "#overview > h2", "text", "Headings & copy", 0),
     ("about", "about.title", "Section heading", "#about h2", "text", "Headings & copy", 0),
     ("about", "about.detail_1", "Property description · paragraph 1", "#about .story-detail", "textarea", "Headings & copy", 0),
@@ -76,6 +78,8 @@ SECTION_FIELDS = [
     ("location", "location.cta_link", "Get directions · destination", "#location a.source-link", "cta_link", "Call to action", 0),
     ("reviews", "reviews.title", "Section heading", "#reviews > h2", "text", "Headings & copy", 0),
     ("reviews", "reviews.subheading", "Reviews introduction heading", "#reviews .review-preview-intro h3", "text", "Headings & copy", 0),
+    ("enquiry", "enquiry.card_footnote", "Enquiry card note", ".booking-card .card-footnote", "textarea", "Enquiry information", 0),
+    ("enquiry", "enquiry.nearby_note", "Nearby places note", ".rail-nearby-source", "textarea", "Enquiry information", 0),
 ]
 for index in range(4):
     SECTION_FIELDS.extend([
@@ -265,6 +269,15 @@ def apply_overrides(soup, values):
         if not _approved(field["kind"], value):
             continue
         kind = field["kind"]
+        # Old drafts may contain arbitrary navigation href overrides from the
+        # removed DOM crawler. Never apply hidden sitewide link edits again.
+        if kind == "href" and not (
+            tag.name == "a" and (
+                "source-link" in tag.get("class", []) or
+                "story-secondary-link" in tag.get("class", [])
+            )
+        ):
+            continue
         if kind == "text":
             original = str(node)
             before = re.match(r"^\s*", original).group()

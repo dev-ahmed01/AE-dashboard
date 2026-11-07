@@ -110,7 +110,7 @@ try {
     return iframe?.contentDocument?.querySelector('.property-heading h1')?.textContent==='Visual QA Updated Residence';
   },null,{timeout:20000});
 
-  await page.getByRole('button',{name:/Hero & gallery/}).click();
+  await page.getByRole('button',{name:/Photo gallery/}).click();
   await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).click();
   await page.getByPlaceholder('https://example.com/photo.webp or upload below').fill('/accom-template/assets/ensuite.webp');
   await page.getByPlaceholder('Describe the actual image').fill('Illustrative accommodation interior');
@@ -129,9 +129,9 @@ try {
     return frame?.contentDocument?.body?.textContent?.includes('Premium student support');
   },null,{timeout:20000});
 
-  assert.equal(await page.locator('.accom-editor-section-nav').count(),13,
-    'Editor navigation must reflect all thirteen approved visual sections');
-  await page.getByRole('button',{name:/Property details/}).click();
+  assert.equal(await page.locator('.accom-editor-section-nav').count(),15,
+    'Editor navigation must reflect all fifteen editable property areas');
+  await page.getByRole('button',{name:/Living experience/}).click();
   await page.locator('.accom-copy-field').first().waitFor({state:'visible',timeout:15000});
   const actualCopy = await page.locator('.accom-copy-field input,.accom-copy-field textarea').first().inputValue();
   assert(actualCopy.trim().length>1,'Mapped page fields must be prefilled from the rendered design');
@@ -145,11 +145,11 @@ try {
   await page.getByRole('button',{name:'SEO settings'}).click();
   assert(await page.getByRole('dialog',{name:'Page SEO settings'}).isVisible(),'SEO must be separate from visual sections');
   await page.getByRole('button',{name:'Back to editor'}).click();
-  assert.equal(await page.locator('.accom-editor-section-nav').count(),13);
+  assert.equal(await page.locator('.accom-editor-section-nav').count(),15);
 
   await page.setViewportSize({width:390,height:844});
   await page.waitForFunction(()=>document.querySelector('.accom-editor-device-toggle button:last-child')?.getAttribute('aria-pressed')==='true',{timeout:10000});
-  await page.getByRole('button',{name:/Hero & gallery/}).click();
+  await page.getByRole('button',{name:/Photo gallery/}).click();
   await page.locator('.accom-editor-preview').scrollIntoViewIfNeeded();
   await page.screenshot({path:'qa/evidence/editor-mobile.png'});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
@@ -160,6 +160,40 @@ try {
   const saved=page.getByText('Visual QA Updated Residence').first();
   await saved.waitFor({timeout:15000});
   await page.screenshot({path:'qa/evidence/category-pages-desktop.png'});
+  // A brand-new demo draft must open with real, editable examples from
+  // the approved master — not empty city, address, highlights or photos.
+  await page.getByRole('tab',{name:'Add Page'}).click();
+  await page.getByRole('textbox',{name:'Page name'}).fill('Demo_11');
+  await page.getByRole('button',{name:'Create page'}).click();
+  await editor.waitFor({state:'visible',timeout:20000});
+  await page.locator('.accom-template-sample-note').waitFor({state:'visible',timeout:20000});
+  assert.equal(await page.getByRole('textbox',{name:'City',exact:true}).inputValue(),
+    'Kingston upon Thames','The inspected original city must fill the demo field');
+  assert.equal(await page.getByRole('textbox',{name:'Address',exact:true}).inputValue(),
+    '15 Wood Street','The inspected original address must fill the demo field');
+  assert.equal(await page.getByRole('textbox',{name:'Postcode',exact:true}).inputValue(),'KT1 1TY');
+  assert.equal(await page.locator('.accom-editor-section-nav').count(),15);
+  await page.waitForFunction(()=>{
+    const frame=document.querySelector('iframe[title="Live property page visual preview"]');
+    const doc=frame?.contentDocument;
+    return doc?.querySelector('.property-address')?.textContent?.includes('15 Wood Street') &&
+      doc?.querySelector('#overview .intro-text')?.textContent?.includes('Modern en suite rooms');
+  },null,{timeout:25000});
+  assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('section.gallery > .gallery-tile').count(),4,
+    'Preview must render the supplied, unverified gallery photos in the original layout');
+  await page.screenshot({path:'qa/evidence/demo-identity-prefilled.png'});
+  await page.getByRole('button',{name:/Photo gallery/}).click();
+  assert.equal(await page.locator('.accom-editor-fields .repeater-group .repeater-item').count(),4,
+    'Four illustrative master photos must be ready to edit');
+  await page.screenshot({path:'qa/evidence/demo-gallery-prefilled.png'});
+  await page.getByRole('button',{name:/Residence overview/}).click();
+  assert((await page.getByRole('textbox',{name:'Overview / property description'}).inputValue()).length>40,
+    'Overview must be prefilled with original page text');
+  await page.screenshot({path:'qa/evidence/demo-overview-prefilled.png'});
+  await page.locator('.accom-editor-head-actions .primary').click();
+  await editor.waitFor({state:'hidden',timeout:20000});
+  // Creating a draft with illustrative values must never publish it.
+  await page.getByText('Demo_11',{exact:true}).first().waitFor({timeout:15000});
   await page.getByRole('tab',{name:'Upload Template'}).click();
   await page.locator('.category-upload-drop input[type=file]').setInputFiles({
     name:'Listing.tsx',mimeType:'text/plain',

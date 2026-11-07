@@ -3,21 +3,24 @@ from bs4 import BeautifulSoup
 from test_flow import client, sign_in, draft
 
 
-def test_thirteen_sections_prefilled_and_editable_without_touching_master(client):
+def test_fifteen_visual_areas_prefilled_and_editable_without_touching_master(client):
     auth = sign_in(client)
     property_record = draft(client, auth, name="Map Test Residence")
     url = f"/api/admin/properties/{property_record['id']}"
     mapping = client.get(url + "/content-map", headers=auth)
     assert mapping.status_code == 200, mapping.text
     result = mapping.json()
-    assert result["total_sections"] == 13
+    assert result["total_sections"] == 15
     assert [part["id"] for part in result["sections"]] == [
-        "top", "overview", "about", "tours", "amenities", "rooms", "rules",
-        "payments", "floorplan", "neighbourhood", "faqs", "location", "reviews"
+        "top", "gallery", "overview", "about", "tours", "amenities", "rooms",
+        "rules", "payments", "floorplan", "neighbourhood", "faqs", "location",
+        "reviews", "enquiry"
     ]
-    assert all(part["fields"] for part in result["sections"]), [
+    assert all(part["fields"] for part in result["sections"] if part["id"] not in ("top", "gallery")), [
         (part["id"], len(part["fields"])) for part in result["sections"]
     ]
+    assert next(part for part in result["sections"] if part["id"] == "gallery")["fields"] == []
+    assert next(part for part in result["sections"] if part["id"] == "top")["fields"] == []
     # No incidental navigation, logo, breadcrumb or gallery UI labels are editable.
     all_fields = [field for part in result["sections"] for field in part["fields"]]
     assert all("group" in field and field["label"] for field in all_fields)
@@ -28,6 +31,7 @@ def test_thirteen_sections_prefilled_and_editable_without_touching_master(client
     assert all(f["key"].startswith(("about.","neighbourhood.","location."))
                for f in all_fields if f["kind"] == "cta_link")
     assert not any(f["kind"] == "cta_link" for f in result["sections"][0]["fields"])
+    assert {f["key"] for f in result["sections"][-1]["fields"]} >= {"hero.room_cta","hero.enquiry_cta"}
     payment = next(part for part in result["sections"] if part["id"] == "payments")
     assert sum(f["key"].startswith("payments.card_") for f in payment["fields"]) == 8
     about = next(part for part in result["sections"] if part["id"] == "about")

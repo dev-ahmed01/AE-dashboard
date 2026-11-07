@@ -1071,3 +1071,28 @@ section.category-split-workspace.category-add-page{
 .accom-field-frame:has(.accom-copy-cta_link) .accom-field-frame-title{background:#fff9f9}
 .accom-field-frame:has(.accom-copy-cta_link){border-color:#ecdada}
 .accom-editor-fields .accom-fields-group + .accom-copy-panel{margin-top:20px}
+
+
+/* Property page editor: frames correspond to actual page areas, not raw HTML tags. */
+.accom-edit-card-stack{display:grid;gap:13px}
+.accom-edit-card{background:#fff;border:1px solid #e5e7ea;border-radius:14px;overflow:hidden;box-shadow:0 2px 9px rgba(32,38,48,.025)}
+.accom-edit-card-heading{padding:13px 14px;display:flex;align-items:flex-start;gap:11px;border-bottom:1px solid #eceef1;background:#fbfbfb}
+.accom-edit-card-number{display:flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border:1px solid #eee1e1;border-radius:8px;color:#ed2024;background:#fff8f8;font-size:10px;font-weight:800}
+.accom-edit-card-heading strong{font-size:12px;color:#292e36;font-weight:790;line-height:1.35}
+.accom-edit-card-heading p{font-size:10px;color:#898f9b;margin:3px 0 0;line-height:1.45}
+.accom-edit-card-body{padding:14px;display:grid;gap:14px}
+.accom-edit-card-body>.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.accom-edit-card-body .repeater-group{padding:0;border:0;background:none}
+.accom-edit-card-body .repeater-heading{padding:3px 0}
+.accom-template-sample-note{border:1px solid #eedcba;background:#fffaf1;border-radius:12px;padding:11px 13px;margin:0 0 16px}
+.accom-template-sample-note strong{display:block;font-size:11px;color:#574022}
+.accom-template-sample-note p{color:#846e4b;font-size:10px;line-height:1.55;margin:5px 0 0}
+.accom-template-optional{display:flex;flex-wrap:wrap;align-items:center;gap:9px;justify-content:space-between;padding:11px 12px;margin:0 0 16px;border:1px solid #ededf0;border-radius:10px;background:#fafafa}
+.accom-template-optional span{font-size:10px;line-height:1.5;color:#777e89;max-width:220px}
+.accom-template-optional button{font-size:10px;font-weight:750;color:#d71d22;padding:8px 11px;border-radius:8px;background:#fff;border:1px solid #f4d9da}
+.accom-template-optional button:hover{background:#fff3f3}
+.accom-editor-fields-body>.accom-fields-group{background:#fff;border:1px solid #e7e8ea;border-radius:13px;padding:13px;box-shadow:0 2px 8px rgba(32,38,48,.025)}
+.accom-editor-fields-body>.accom-fields-group .repeater-group{padding:8px}
+.accom-editor-fields-body>.accom-copy-panel{border-top:0;margin-top:12px;padding-top:0}
+.accom-field-frame{margin-top:0;margin-bottom:11px}
+@media(max-width:760px){.accom-edit-card-body>.form-grid{grid-template-columns:1fr}.accom-template-optional{align-items:stretch}}
