@@ -21,8 +21,16 @@ try {
   await page.locator('.auth-form button.primary').click();
   await page.waitForURL('**/admin',{timeout:30000});
 
+  await page.getByRole('tab',{name:'All Pages'}).click();
+  assert(await page.getByRole('tab',{name:'Add Page'}).isVisible());
+  assert(await page.getByRole('tab',{name:'Upload Template'}).isVisible());
+  assert.equal(await page.locator('.category-table-header').count(),1,'Minimal directory table must exist');
+  assert.equal(await page.getByText('iQ Kingston',{exact:true}).count(),0,'Old seeded demo should not appear in page directory');
   await page.getByRole('tab',{name:'Add Page'}).click();
-  await page.getByRole('button',{name:'Preview actual design'}).click();
+  const addPreview=page.frameLocator('iframe[title="Approved Accom template preview"]');
+  await addPreview.locator('#payments').waitFor({state:'attached',timeout:20000});
+  await page.screenshot({path:'qa/evidence/category-add-page.png'});
+  await page.getByRole('button',{name:/Expand/}).click();
   const fullSource = page.frameLocator('iframe[title="Complete original Accom property page"]');
   for(const id of ['overview','about','tours','amenities','rooms','rules','payments','floorplan','neighbourhood','faqs','location','reviews']){
     await fullSource.locator('#'+id).waitFor({state:'attached',timeout:20000});
@@ -104,8 +112,20 @@ try {
   await editor.waitFor({state:'hidden',timeout:20000});
   const saved=page.getByText('Visual QA Updated Residence').first();
   await saved.waitFor({timeout:15000});
+  await page.screenshot({path:'qa/evidence/category-pages-desktop.png'});
+  await page.getByRole('tab',{name:'Upload Template'}).click();
+  await page.locator('.category-upload-drop input[type=file]').setInputFiles({
+    name:'Listing.tsx',mimeType:'text/plain',
+    buffer:Buffer.from('export default function Listing(){return <main><h1>Student living in Kingston</h1><button>Request a viewing</button><img src="/room.webp" /></main>}')
+  });
+  await page.getByRole('button',{name:/Inspect project/}).click();
+  const inspection=page.locator('.category-project-results');
+  await inspection.waitFor({state:'visible',timeout:15000});
+  assert(await inspection.getByText('Student living in Kingston').count()>0,'Source heading must be detected');
+  assert(await inspection.getByText('Build/export required for visual editing.').isVisible(),'Dynamic component cannot be represented as pixel-perfect HTML without build');
+  await page.screenshot({path:'qa/evidence/category-source-inspection.png'});
   assert.deepEqual(errors,[],'Unexpected uncaught page exceptions');
-  console.log('PASS: signed-out admin redirects directly to login; full 13-section live source gallery/enquiry; exact original in editor; draft preview; repeaters; mobile; save');
+  console.log('PASS: minimal category tabs and table, demo data hidden, original scaled Add Page preview, full 13-section source gallery/enquiry, editor/draft save/mobile, TSX project source extraction');
 } finally {
   await browser.close();
 }

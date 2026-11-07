@@ -33,6 +33,7 @@ from sqlalchemy.pool import StaticPool
 from property_runtime import render_property
 from editor_preview import render_draft
 from demo_seed import seed_kingston
+from project_inspector import inspect_project, extract_html_from_zip
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./accom-local.db')
 JWT_SECRET = os.getenv('JWT_SECRET', '')
@@ -1013,6 +1014,33 @@ def _render_editorial(t,p,preview=False):
 @app.get('/api/admin/templates')
 def get_templates(_:User=Depends(require_admin),db:Session=Depends(get_db)):
     return [_template_info(t) for t in db.scalars(select(ContentTemplate).order_by(ContentTemplate.id.desc())).all()]
+
+@app.post('/api/admin/projects/inspect')
+async def inspect_uploaded_project(file:UploadFile=File(...),user:User=Depends(require_manager)):
+    """Inspect a JSX/TSX/Vue/Astro source file or ZIP without running build code."""
+    raw=await file.read(24*1024*1024+1)
+    if len(raw)>24*1024*1024:raise HTTPException(413,'Project must be 24 MB or smaller')
+    try:return inspect_project(file.filename or 'project.zip',raw)
+    except ValueError as error:raise HTTPException(422,str(error)) from error
+
+@app.post('/api/admin/templates/import-project',status_code=201)
+async def import_static_project_template(
+    file:UploadFile=File(...),source_path:str=Form(...),name:str=Form(''),
+    user:User=Depends(require_manager),db:Session=Depends(get_db)
+):
+    """Only import meaningful static HTML from an archive; never execute source projects."""
+    if not (file.filename or '').lower().endswith('.zip'):
+        raise HTTPException(422,'Choose a ZIP project containing a built HTML page')
+    raw=await file.read(24*1024*1024+1)
+    if len(raw)>24*1024*1024:raise HTTPException(413,'Project must be 24 MB or smaller')
+    try:source=extract_html_from_zip(raw,source_path)
+    except ValueError as error:raise HTTPException(422,str(error)) from error
+    clean,sections,fields=_extract_template(source)
+    if not fields:raise HTTPException(422,'No editable content detected in the selected HTML page')
+    label=name.strip() or source_path.rsplit('/',1)[-1].rsplit('.',1)[0]
+    t=ContentTemplate(name=label[:160],source_html=clean,sections=sections,fields=fields)
+    db.add(t);db.flush();log(db,user,'template.import.project',str(t.id));db.commit()
+    return _template_info(t)
 
 @app.post('/api/admin/templates',status_code=201)
 async def upload_template(file:UploadFile=File(...),name:str=Form(''),user:User=Depends(require_manager),db:Session=Depends(get_db)):
