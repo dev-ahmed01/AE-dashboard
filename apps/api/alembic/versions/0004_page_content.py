@@ -15,6 +15,9 @@ depends_on = None
 def upgrade():
     bind = op.get_bind()
     columns = {column["name"] for column in sa.inspect(bind).get_columns("properties")}
+    if "highlight_descriptions" not in columns:
+        op.add_column("properties", sa.Column("highlight_descriptions", sa.JSON(),
+                                              nullable=False, server_default=sa.text("'[]'")))
     if "content_overrides" not in columns:
         op.add_column("properties", sa.Column("content_overrides", sa.JSON(),
                                               nullable=False, server_default=sa.text("'{}'")))
