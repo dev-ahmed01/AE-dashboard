@@ -162,6 +162,7 @@ def render_property(p, payload, public_site_url, preview=False):
     desc = _text(getattr(p, "description", "")) or "Contact Accom to confirm the latest property details."
     amenities = [_text(x) for x in _list(getattr(p, "amenities", [])) if _text(x)]
     highlights = [_text(x) for x in _list(getattr(p, "highlights", [])) if _text(x)]
+    highlight_descriptions = [_text(x) for x in _list(getattr(p, "highlight_descriptions", []))]
     landmarks = [x for x in _list(getattr(p, "landmarks", [])) if isinstance(x, dict)]
     reviews = [x for x in _list(getattr(p, "reviews", [])) if isinstance(x, dict) and _text(x.get("quote"))]
     rooms = _list(payload.get("rooms"))
@@ -235,7 +236,8 @@ def render_property(p, payload, public_site_url, preview=False):
     for index, fact in enumerate(facts):
         if index < len(highlights):
             _put(soup, ".overview-facts > div:nth-child(" + str(index + 1) + ") strong", highlights[index])
-            _put(soup, ".overview-facts > div:nth-child(" + str(index + 1) + ") p", "Ask for details")
+            _put(soup, ".overview-facts > div:nth-child(" + str(index + 1) + ") p",
+                 highlight_descriptions[index] if index < len(highlight_descriptions) and highlight_descriptions[index] else "Ask for details")
         elif not preview:
             fact.decompose()
 
