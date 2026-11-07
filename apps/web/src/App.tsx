@@ -236,6 +236,8 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
  const [previewLoading,setPreviewLoading]=useState(false)
  const [previewError,setPreviewError]=useState('')
  const [previewMode,setPreviewMode]=useState<'desktop'|'mobile'>('desktop')
+ const [sourceReference,setSourceReference]=useState(true)
+ const [sourceSection,setSourceSection]=useState('top')
  const [previewScale,setPreviewScale]=useState(.4)
  const previewContainerRef=useRef<HTMLDivElement|null>(null)
  const previewFrameRef=useRef<HTMLIFrameElement|null>(null)
@@ -281,6 +283,25 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
   query.addEventListener('change',update)
   return()=>query.removeEventListener('change',update)
  },[])
+ const sourceSections=[
+  {id:'top',name:'Hero & gallery'},
+  {id:'overview',name:'Residence overview'},
+  {id:'about',name:'Property details'},
+  {id:'tours',name:'Photo categories & tour'},
+  {id:'amenities',name:'Amenities & bills'},
+  {id:'rooms',name:'Rooms & price choices'},
+  {id:'rules',name:'House rules'},
+  {id:'payments',name:'Payments & fees'},
+  {id:'floorplan',name:'Floor plans'},
+  {id:'neighbourhood',name:'Neighbourhood'},
+  {id:'faqs',name:'FAQs'},
+  {id:'location',name:'Landmarks & location'},
+  {id:'reviews',name:'Student reviews'}
+ ]
+ const jumpSource=(id:string)=>{
+  setSourceSection(id)
+  previewFrameRef.current?.contentWindow?.postMessage({type:'accom-open-section',id},'*')
+ }
  const sections=[
   {id:'essentials',title:'Property essentials',desc:'Identity, address and introduction',index:'01'},
   {id:'gallery',title:'Property photos',desc:'Gallery layout and image sizing',index:'02'},
@@ -333,6 +354,10 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
   }catch{ /* A browser can restrict frame access; the preview still renders. */ }
  },[activeSection,previewHtml])
  const openFullPreview=()=>{
+  if(sourceReference){
+   window.open('/accom-live/index.html','_blank','noopener')
+   return
+  }
   if(!previewHtml){setPreviewError('Complete a saved draft to enable the full preview.');return}
   const tab=window.open('about:blank','_blank')
   if(!tab){setPreviewError('Allow pop-ups to open the preview.');return}
@@ -358,7 +383,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
       <nav className="accom-editor-sections" aria-label="Choose editing section">
        {sections.map(item=><button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>{setActiveSection(item.id);fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})}}><span className="accom-editor-section-index">{item.index}</span><span>{item.title}</span><ChevronRight size={15}/></button>)}
       </nav>
-      <div className="accom-editor-side-note"><strong>Approved Accom template</strong><small>Only content changes. Your original layout, room comparison and enquiry design stay intact.</small></div>
+      <div className="accom-editor-side-note"><strong>Deployed Accom master page</strong><small>Original reference contains 13 sections. Use the visual preview to inspect the complete design; editable fields are being mapped separately.</small></div>
      </aside>
      <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
       <div className="accom-editor-fields-head"><span className="eyebrow">{currentSection.index} / PAGE CONTENT</span><h3>{currentSection.title}</h3><p>{currentSection.desc}. Edits are reflected in the preview.</p></div>
@@ -395,17 +420,20 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
 </div>}
       </div>
      </main>
-     <section className="accom-editor-preview" aria-label="Live property preview">
-      <div className="accom-editor-preview-head"><div><span className="eyebrow">LIVE PREVIEW</span><h3>Approved property design</h3><small>Actual template · unsaved changes</small></div>
+     <section className="accom-editor-preview" aria-label="Complete Accom property preview">
+      <div className="accom-editor-preview-head"><div><span className="eyebrow">PAGE PREVIEW</span><h3>{sourceReference?'Original deployed Accom design':'Current draft content'}</h3><small>{sourceReference?'Full original Netlify page · interactive · read-only':'Database-backed draft · unsaved field changes'}</small></div>
        <div className="accom-editor-device-toggle" aria-label="Preview viewport"><button type="button" aria-pressed={previewMode==='desktop'} className={previewMode==='desktop'?'active':''} onClick={()=>setPreviewMode('desktop')}>Desktop</button><button type="button" aria-pressed={previewMode==='mobile'} className={previewMode==='mobile'?'active':''} onClick={()=>setPreviewMode('mobile')}>Mobile</button></div>
       </div>
-      <div className="accom-editor-preview-viewport" ref={previewContainerRef}>
-       {previewHtml?<div className={'accom-editor-preview-paper '+(previewMode==='mobile'?'mobile':'desktop')} style={{width:previewWidth*previewScale,height:1020*previewScale}}>
-         <iframe ref={previewFrameRef} title="Live property page visual preview" sandbox="allow-scripts allow-same-origin" srcDoc={previewHtml} style={{width:previewWidth,height:1020,transform:'scale('+previewScale+')',transformOrigin:'top left'}} onLoad={e=>{try{const target=({essentials:'#overview',gallery:'.gallery-grid',highlights:'#included',policies:'#policies',landmarks:'.overview-landmarks',offers:'.cta-quickfacts',seo:'body'} as Record<string,string>)[activeSection];e.currentTarget.contentDocument?.querySelector(target)?.scrollIntoView({block:'start',behavior:'instant'})}catch{}}}/>
-        </div>:<div className="accom-editor-preview-empty"><ImageIcon size={30}/><strong>{source?'Preparing your property preview':'Save a draft to start previewing'}</strong><p>Updates will appear in the original Accom page layout.</p></div>}
+      <div className="accom-source-preview-tools">
+       <div className="accom-preview-mode-switch" role="group" aria-label="Preview source"><button type="button" className={sourceReference?'active':''} aria-pressed={sourceReference} onClick={()=>setSourceReference(true)}>Exact original page</button><button type="button" className={!sourceReference?'active':''} aria-pressed={!sourceReference} onClick={()=>setSourceReference(false)}>Draft content</button></div>
+       {sourceReference&&<select value={sourceSection} aria-label="Jump to page section" onChange={e=>jumpSource(e.target.value)}>{sourceSections.map(section=><option key={section.id} value={section.id}>{section.name}</option>)}</select>}
       </div>
-      <div className="accom-editor-preview-foot">{previewError&&<span className="accom-editor-preview-error" role="alert">{previewError}</span>}{previewLoading&&<span aria-live="polite">Updating preview…</span>}<button type="button" className="outline" onClick={openFullPreview} disabled={!previewHtml}>Open full preview <ArrowRight size={15}/></button></div>
-     </section>
+      <div className="accom-editor-preview-viewport" ref={previewContainerRef}>
+       {(sourceReference||previewHtml)?<div className={'accom-editor-preview-paper '+(previewMode==='mobile'?'mobile':'desktop')} style={{width:previewWidth*previewScale,height:1020*previewScale}}>
+         <iframe key={sourceReference?'source':'draft'} ref={previewFrameRef} title={sourceReference?'Complete original Accom source page':'Live property page visual preview'} sandbox={sourceReference?'allow-scripts allow-popups':'allow-scripts allow-same-origin'} src={sourceReference?'/accom-live/index.html':undefined} srcDoc={sourceReference?undefined:previewHtml} className={sourceReference?'accom-source-frame':''} style={{width:previewWidth,height:1020,transform:'scale('+previewScale+')',transformOrigin:'top left'}} onLoad={e=>{if(sourceReference){e.currentTarget.contentWindow?.postMessage({type:'accom-open-section',id:sourceSection},'*');return}try{const target=({essentials:'#overview',gallery:'.gallery-grid',highlights:'#included',policies:'#policies',landmarks:'.overview-landmarks',offers:'.cta-quickfacts',seo:'body'} as Record<string,string>)[activeSection];e.currentTarget.contentDocument?.querySelector(target)?.scrollIntoView({block:'start',behavior:'instant'})}catch{}}}/>
+        </div>:<div className="accom-editor-preview-empty"><ImageIcon size={30}/><strong>{source?'Preparing draft preview':'Save a draft to preview its data'}</strong></div>}
+      </div>
+      <div className="accom-editor-preview-foot">{sourceReference?<span>Original design is read-only. Choose Draft content to see your edits.</span>:<>{previewError&&<span className="accom-editor-preview-error" role="alert">{previewError}</span>}{previewLoading&&<span>Updating preview…</span>}</>}<button type="button" className="outline" onClick={openFullPreview} disabled={!sourceReference&&!previewHtml}>Open full page <ArrowRight size={15}/></button></div>     </section>
     </div>
     <footer className="drawer-footer accom-editor-footer">
      <div><strong>{dirty?'Unsaved changes':'All changes saved'}</strong><small>Editing affects only this page. Save to store your changes in Category.</small></div>
