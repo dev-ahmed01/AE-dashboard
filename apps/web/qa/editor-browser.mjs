@@ -84,6 +84,8 @@ try {
     'Original sticky pricing sidebar must be intact');
   assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('.gallery-tile').count(),5,
     'Unfilled admin preview displays original sample gallery, explicitly labeled as a template example');
+  const previewStart = await page.frameLocator('iframe[title="Live property page visual preview"]').locator('body').evaluate(()=>window.scrollY);
+  assert(previewStart<=20,'New property draft must open at original hero/gallery, not skip straight to a lower section: '+previewStart);
   await page.screenshot({path:'qa/evidence/exact-master-draft-preview-loaded.png'});
   const draftFrame = page.frameLocator('iframe[title="Live property page visual preview"]');
   await draftFrame.locator('.gallery-tile').first().click();
