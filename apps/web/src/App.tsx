@@ -713,6 +713,49 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
       </div>
       <div className="accom-editor-preview-foot"><span>{sourceReference?'Original template · select Draft to see edits.':previewLoading?'Updating preview…':previewError||'Preview only · Changes are not published'}</span></div>
      </section>
+     <section className="accom-editor-seo-section" id="accom-seo-settings" aria-label="SEO Settings">
+      <div className="accom-seo-section-intro">
+       <span className="accom-section-eyebrow">02 / SEARCH</span>
+       <h2>SEO Settings</h2>
+       <p>Set the information search engines use for this page.</p>
+      </div>
+      <div className="accom-seo-settings-fields">
+       <label>SEO title <span className="accom-seo-field-count">{form.seo_title.length}/250</span>
+        <input maxLength={250} value={form.seo_title} onChange={e=>set('seo_title',e.target.value)} placeholder="Your unique search title"/>
+       </label>
+       <label>Meta description <span className="accom-seo-field-count">{form.meta_description.length}/400</span>
+        <textarea rows={3} maxLength={400} value={form.meta_description} onChange={e=>set('meta_description',e.target.value)} placeholder="Brief, useful page description"/>
+       </label>
+       <div className="accom-seo-switch-row">
+        <label className="accom-seo-switch">
+         <span className="accom-seo-switch-copy"><strong>Allow indexing</strong><small>{form.noindex?'Off · Ask search engines not to show this page in results.':'On · Allow search engines to index this page when it is published.'}</small></span>
+         <input type="checkbox" role="switch" aria-label="Allow indexing" checked={!form.noindex} onChange={e=>set('noindex',!e.target.checked)}/>
+         <span className="accom-seo-switch-track" aria-hidden="true"><i/></span>
+        </label>
+        <label className="accom-seo-switch">
+         <span className="accom-seo-switch-copy"><strong>Follow links</strong><small>{form.nofollow?'Off · Ask search engines not to follow links.':'On · Allow search engines to follow links on this page.'}</small></span>
+         <input type="checkbox" role="switch" aria-label="Follow links" checked={!form.nofollow} onChange={e=>set('nofollow',!e.target.checked)}/>
+         <span className="accom-seo-switch-track" aria-hidden="true"><i/></span>
+        </label>
+       </div>
+       <label>Canonical override (optional)
+        <input value={form.canonical_override} onChange={e=>set('canonical_override',e.target.value)} placeholder="Automatic self-canonical — or enter an https:// URL"/>
+        <small>Leave blank to use the property's own canonical URL.</small>
+       </label>
+       <div className="accom-seo-snippet" aria-label="Search result preview">
+        <span>Search result preview</span>
+        <p className="accom-seo-snippet-url">{seoPreviewUrl}</p>
+        <strong>{seoPreviewTitle}</strong>
+        <p>{seoPreviewDescription}</p>
+        <small>Search engines can rewrite how your page appears.</small>
+       </div>
+       <div className="accom-seo-publishing">
+        <label>Page URL slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Automatically created from property name"/></label>
+        <label className="accom-seo-demo-checkbox"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demonstration content — publishing remains blocked until verified</label>
+        <p>SEO settings are saved with your draft. Publishing is a separate action in All Pages; a draft or demonstration page stays non-indexable even when Allow indexing is on.</p>
+       </div>
+      </div>
+     </section>
     </div>
    </form>
   </div>
