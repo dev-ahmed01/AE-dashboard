@@ -9,7 +9,7 @@ from original_runtime import render_property
 
 TEXT_FIELDS = {
     'name', 'city', 'country', 'address', 'postcode', 'university',
-    'description', 'seo_title', 'meta_description', 'review_source_url', 'tour_url',
+    'description', 'seo_title', 'meta_description', 'canonical_override', 'review_source_url', 'tour_url', 
 }
 COLLECTIONS = {
     'highlights', 'highlight_descriptions', 'amenities', 'policies', 'faq', 'landmarks',
@@ -58,7 +58,7 @@ def _draft_list(key, value):
 def render_draft(property_record, changes, snapshot, public_site_url):
     if not isinstance(changes, dict):
         changes = {}
-    fields = (TEXT_FIELDS | COLLECTIONS | {'slug', 'noindex', 'is_demo', 'review_score', 'review_count', 'content_overrides'})
+    fields = (TEXT_FIELDS | COLLECTIONS | {'slug', 'noindex', 'nofollow', 'is_demo', 'review_score', 'review_count', 'content_overrides'})
     transient = SimpleNamespace(**{key: getattr(property_record, key, None) for key in fields})
     for key in TEXT_FIELDS:
         value = changes.get(key)
@@ -73,6 +73,8 @@ def render_draft(property_record, changes, snapshot, public_site_url):
         transient.is_demo = changes['is_demo']
     if isinstance(changes.get('noindex'), bool):
         transient.noindex = changes['noindex']
+    if isinstance(changes.get('nofollow'), bool):
+        transient.nofollow = changes['nofollow']
     for key in ('review_score', 'review_count'):
         value = changes.get(key)
         if value is None or isinstance(value, (int, float)):

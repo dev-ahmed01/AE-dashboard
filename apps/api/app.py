@@ -4,6 +4,7 @@ This first implementation intentionally excludes rent collection and booking con
 """
 import os
 import re
+from urllib.parse import urlsplit
 import json
 import hashlib
 import io
@@ -107,6 +108,8 @@ class Property(Base):
     seo_title: Mapped[str] = mapped_column(String(250), default='')
     meta_description: Mapped[str] = mapped_column(String(400), default='')
     noindex: Mapped[bool] = mapped_column(Boolean, default=False)
+    nofollow: Mapped[bool] = mapped_column(Boolean, default=False)
+    canonical_override: Mapped[str] = mapped_column(Text, default='')
     published: Mapped[bool] = mapped_column(Boolean, default=False)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
     edit_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -361,7 +364,7 @@ def prop_json(p, detail=False, staff=False):
     rooms=[room_json(r) for r in p.rooms if staff or (r.active and r.availability!='unavailable')]
     price,currency,period,note=_headline_rate(p)
     d={'id':p.id,'name':p.name,'slug':p.slug,'city':p.city,'country':p.country,'address':p.address,'postcode':p.postcode,'university':p.university,'description':p.description,'gallery':p.gallery,'published':p.published,'archived':p.archived,'is_demo':p.is_demo,'edit_version':p.edit_version,'verified_at':p.verified_at.isoformat() if p.verified_at else None,'from_price':price,'price_note':note,'currency':currency,'price_period':period}
-    if detail:d.update({'highlights':p.highlights,'highlight_descriptions':p.highlight_descriptions,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'content_overrides':p.content_overrides or {},'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'rooms':rooms})
+    if detail:d.update({'highlights':p.highlights,'highlight_descriptions':p.highlight_descriptions,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'content_overrides':p.content_overrides or {},'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'nofollow':p.nofollow,'canonical_override':p.canonical_override,'rooms':rooms})
     return d
 
 def slugify(t):
@@ -433,9 +436,26 @@ class PropertyInput(BaseModel):
     seo_title: str = ''
     meta_description: str = ''
     noindex: bool = False
+    nofollow: bool = False
+    canonical_override: str = Field(default='',max_length=2048)
     published: bool = False
     is_demo: bool = False
     edit_version: int | None = Field(default=None,ge=1)
+
+    @field_validator('canonical_override')
+    @classmethod
+    def validate_canonical_override(cls, value):
+        if not value:
+            return value
+        try:
+            parsed = urlsplit(value)
+        except ValueError as exc:
+            raise ValueError('Canonical override must be an absolute HTTPS URL') from exc
+        if (parsed.scheme != 'https' or not parsed.hostname or
+            parsed.username or parsed.password or parsed.fragment or
+            any(char.isspace() or char in ('<', '>', '"', chr(39)) for char in value)):
+            raise ValueError('Canonical override must be an absolute HTTPS URL without a fragment')
+        return value
 
     @field_validator('content_overrides')
     @classmethod

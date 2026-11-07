@@ -75,7 +75,7 @@ def test_public_missing_images_never_uses_sample_kingston_photography():
     assert dom.select_one(".accom-master-photo-placeholder")
     assert not dom.select_one(".accom-master-preview-note")
     assert "iQ Kingston" not in dom.body.get_text(" ", strip=True)
-    assert dom.select_one("meta[name=robots]")["content"] == "noindex,nofollow"
+    assert dom.select_one("meta[name=robots]")["content"] == "noindex,follow"
 
 
 def test_original_large_photo_switch_is_respected():

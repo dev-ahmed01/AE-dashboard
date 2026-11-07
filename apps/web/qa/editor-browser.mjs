@@ -54,13 +54,14 @@ try {
   const editor = page.locator('.accom-page-editor');
   await editor.waitFor({state:'visible',timeout:20000});
   const appSidebar=await page.locator('.accom-editor-site-sidebar').boundingBox();
-  const side = await page.locator('.accom-editor-sidebar').boundingBox();
-  const middle = await page.locator('.accom-editor-fields').boundingBox();
+  const stacked=await page.locator('.accom-stacked-sections').boundingBox();
   const preview = await page.locator('.accom-editor-preview').boundingBox();
-  assert(appSidebar&&side&&middle&&preview, 'Workspace shell and three panels must render');
-  assert(appSidebar.width>=195&&side.x>=appSidebar.x+appSidebar.width,'Editor must keep the Workspace-style sidebar visible');
-  assert(side.x+side.width <= middle.x+3,'Sections overlap content');
-  assert(middle.x+middle.width <= preview.x+3,'Content overlaps preview');
+  assert(appSidebar&&stacked&&preview, 'Global brand sidebar, stacked forms and preview must render');
+  assert(appSidebar.width>=195&&stacked.x>=appSidebar.x+appSidebar.width,'Keep the original global brand sidebar');
+  assert.equal(await page.locator('.accom-editor-sidebar').count(),0,'Remove the extra Edit sections sidebar entirely');
+  assert(stacked.x+stacked.width <= preview.x+3,'Stacked forms must not overlap preview');
+  assert.equal(await page.locator('.accom-stack-section').count(),15,'All fifteen property sections must be visible in page order');
+  assert.equal(await page.locator('.accom-editor-seo-section').count(),1,'SEO must be a separate full-width section under the content');
   assert(preview.width>=300,'Preview is too narrow for desktop');
   assert(preview.height>=440,'Preview must be tall enough to inspect page details');
   assert(await page.locator('.accom-editor-topbar').isVisible(),'Breadcrumb top bar should match Workspace dashboard');
@@ -111,10 +112,10 @@ try {
   },null,{timeout:20000});
 
   await page.getByRole('button',{name:/Photo gallery/}).click();
-  await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).click();
+  await page.locator('.accom-stack-expanded').getByRole('button',{name:'Add another'}).click();
   await page.getByPlaceholder('https://example.com/photo.webp or upload below').fill('/accom-template/assets/ensuite.webp');
   await page.getByPlaceholder('Describe the actual image').fill('Illustrative accommodation interior');
-  await page.locator('.accom-editor-fields .image-layout-switch').getByRole('button',{name:'Large'}).click();
+  await page.locator('.accom-stack-expanded .image-layout-switch').getByRole('button',{name:'Large'}).click();
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
     return frame?.contentDocument?.querySelector('section.gallery > .gallery-tile img')?.getAttribute('src')==='/accom-template/assets/ensuite.webp';
@@ -122,14 +123,14 @@ try {
   await page.screenshot({path:'qa/evidence/editor-desktop.png'});
 
   await page.getByRole('button',{name:/Residence overview/}).click();
-  await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).first().click();
+  await page.locator('.accom-stack-expanded').getByRole('button',{name:'Add another'}).first().click();
   await page.getByRole('textbox',{name:'Highlight title',exact:true}).fill('Premium student support');
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
     return frame?.contentDocument?.body?.textContent?.includes('Premium student support');
   },null,{timeout:20000});
 
-  assert.equal(await page.locator('.accom-editor-section-nav').count(),15,
+  assert.equal(await page.locator('.accom-stack-section').count(),15,
     'Editor navigation must reflect all fifteen editable property areas');
   await page.getByRole('button',{name:/Living experience/}).click();
   await page.locator('.accom-copy-field').first().waitFor({state:'visible',timeout:15000});
@@ -142,10 +143,29 @@ try {
     return frame?.contentDocument?.querySelector('#about h2')?.textContent?.includes('Designed around your student life');
   },null,{timeout:20000});
   await page.screenshot({path:'qa/evidence/prefilled-page-copy-edit.png'});
-  await page.getByRole('button',{name:'SEO settings'}).click();
-  assert(await page.getByRole('dialog',{name:'Page SEO settings'}).isVisible(),'SEO must be separate from visual sections');
-  await page.getByRole('button',{name:'Back to editor'}).click();
-  assert.equal(await page.locator('.accom-editor-section-nav').count(),15);
+  await page.getByRole('button',{name:'SEO settings',exact:true}).click();
+  assert(await page.locator('#accom-seo-settings').isVisible(),'SEO is a standalone section below the property fields');
+  const seoSection=page.locator('#accom-seo-settings');
+  await seoSection.scrollIntoViewIfNeeded();
+  const seoLayout=await page.evaluate(()=>{
+    const seo=document.querySelector('#accom-seo-settings').getBoundingClientRect();
+    const preview=document.querySelector('.accom-editor-preview').getBoundingClientRect();
+    return {seoTop:seo.top,previewBottom:preview.bottom};
+  });
+  assert(seoLayout.previewBottom<=seoLayout.seoTop+3,
+    'Sticky preview must end before the full-width SEO card: '+JSON.stringify(seoLayout));
+  assert.equal(await seoSection.getByRole('switch').count(),2,'Independent indexing and follow controls');
+  await seoSection.getByRole('switch',{name:'Allow indexing'}).check();
+  await seoSection.getByRole('switch',{name:'Follow links'}).uncheck();
+  await seoSection.getByRole('textbox',{name:'SEO title'}).fill('Campus ready student accommodation');
+  await seoSection.getByRole('textbox',{name:'Meta description'}).fill('Find your next home, with genuine accommodation details and clear pricing.');
+  await seoSection.getByRole('textbox',{name:'Canonical override (optional)'}).fill('https://example.org/student-living/test');
+  assert(await seoSection.getByText('Campus ready student accommodation',{exact:true}).isVisible(),'SEO snippet uses live inputs');
+  const pageCards=await page.locator('.accom-stack-section').count();
+  assert.equal(pageCards,15,'SEO is not mixed into the visual content section list');
+  await page.screenshot({path:'qa/evidence/seo-section-workspace-style.png'});
+  await page.getByRole('button',{name:/Property identity/}).click();
+  assert.equal(await page.locator('.accom-stack-section').count(),15);
 
   await page.setViewportSize({width:390,height:844});
   await page.waitForFunction(()=>document.querySelector('.accom-editor-device-toggle button:last-child')?.getAttribute('aria-pressed')==='true',{timeout:10000});
@@ -172,7 +192,7 @@ try {
   assert.equal(await page.getByRole('textbox',{name:'Address',exact:true}).inputValue(),
     '15 Wood Street','The inspected original address must fill the demo field');
   assert.equal(await page.getByRole('textbox',{name:'Postcode',exact:true}).inputValue(),'KT1 1TY');
-  assert.equal(await page.locator('.accom-editor-section-nav').count(),15);
+  assert.equal(await page.locator('.accom-stack-section').count(),15);
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
     const doc=frame?.contentDocument;
@@ -183,7 +203,7 @@ try {
     'Preview must render the supplied, unverified gallery photos in the original layout');
   await page.screenshot({path:'qa/evidence/demo-identity-prefilled.png'});
   await page.getByRole('button',{name:/Photo gallery/}).click();
-  assert.equal(await page.locator('.accom-editor-fields .repeater-group .repeater-item').count(),4,
+  assert.equal(await page.locator('.accom-stack-expanded .repeater-group .repeater-item').count(),4,
     'Four illustrative master photos must be ready to edit');
   await page.screenshot({path:'qa/evidence/demo-gallery-prefilled.png'});
   await page.getByRole('button',{name:/Residence overview/}).click();
@@ -206,7 +226,7 @@ try {
   assert(await inspection.getByText('Build/export required for visual editing.').isVisible(),'Dynamic component cannot be represented as pixel-perfect HTML without build');
   await page.screenshot({path:'qa/evidence/category-source-inspection.png'});
   assert.deepEqual(errors,[],'Unexpected uncaught page exceptions');
-  console.log('PASS: WE-style global sidebar, breadcrumbs, compact three-panel Accom editor, live draft-first preview, original toggle, draft saving, mobile, project inspection');
+  console.log('PASS: Workspace-style stacked sections, inline SEO toggles/canonical, original live preview, draft save, mobile and project inspection');
 } finally {
   await browser.close();
 }

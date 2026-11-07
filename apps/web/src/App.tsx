@@ -9,7 +9,7 @@ type Landmark={name:string;detail:string}
 type Media={url:string;alt:string;category?:string;layout?:'regular'|'large'}
 type MasterField={key:string;section:string;kind:'text'|'textarea'|'cta_label'|'cta_link'|'image'|'image_alt';label:string;group:string;value:string}
 type MasterSection={id:string;title:string;fields:MasterField[]}
-type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;rooms?:Room[]}
+type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;nofollow?:boolean;canonical_override?:string;rooms?:Room[]}
 type User={id:number;name:string;email:string;role:string}
 type LoginResult={token:string;user:User}
 type Enquiry={id:number;property:string;property_id:number;room_id:number|null;name:string;email:string;phone:string;university:string;move_in_date:string|null;message:string;status:string;assigned_to_id:number|null;created_at:string}
@@ -35,7 +35,7 @@ const fmt=(d?:string|null)=>d?new Date(d).toLocaleDateString('en-GB',{day:'numer
 const readPath=()=>window.location.pathname
 type Offer={title:string;description:string;valid_until?:string}
 type Review={name:string;quote:string;source_url:string}
-const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
+const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,nofollow:false,canonical_override:'',seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
 const blankRoom={name:'',room_type:'En suite',details:'',size_sqm:null as number|null,kitchen:'Shared',bathroom:'Private',price:null as number|null,currency:'GBP',price_period:'week',available_from:null as string|null,availability:'enquire',rate_checked_at:null as string|null,source_url:'',image_url:'',image_alt:'',image_layout:'regular' as 'regular'|'large',active:true,tenancies:[] as Tenancy[]}
 
 function Logo(){return <span className="brand"><span className="brand-icon">a<span>.</span></span><span className="brand-text">accom<small>BY EMLEN</small></span></span>}
@@ -351,7 +351,6 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const [form,setForm]=useState({...defaults,...(source||{}),gallery:(source?.gallery||[]).map((photo,i):Media=>({...photo,layout:photo.layout||(i===0?'large':'regular')}))})
  const [busy,setBusy]=useState(false),[error,setError]=useState('')
  const [activeSection,setActiveSection]=useState('top')
- const [seoOpen,setSeoOpen]=useState(false)
  const [contentSections,setContentSections]=useState<MasterSection[]>([])
  const [contentError,setContentError]=useState('')
  const [templateSample,setTemplateSample]=useState<Record<string,unknown>|null>(null)
@@ -365,7 +364,6 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const [previewScale,setPreviewScale]=useState(.4)
  const previewContainerRef=useRef<HTMLDivElement|null>(null)
  const previewFrameRef=useRef<HTMLIFrameElement|null>(null)
- const fieldsPanelRef=useRef<HTMLElement|null>(null)
  const original=JSON.stringify({...defaults,...(source||{})})
  const [saveNotice,setSaveNotice]=useState('')
  const dirty=JSON.stringify({...defaults,...(source||{}),...form})!==original
@@ -384,8 +382,8 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   e.preventDefault()
   if(form.name.trim().length<3||form.city.trim().length<2){
    setActiveSection('top')
-   fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})
-   setError('Complete the property name and city in Hero & gallery before saving.')
+   document.getElementById('accom-section-top')?.scrollIntoView({block:'start',behavior:'smooth'})
+   setError('Complete the property name and city in Property identity before saving.')
    return
   }
   setBusy(true);setError('');setSaveNotice('');
@@ -444,7 +442,6 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   {id:'reviews',title:'Student reviews',desc:'Verified review content and attribution',index:'14',icon:Heart},
   {id:'enquiry',title:'Enquiry & CTA panel',desc:'Sticky side panel and enquiry buttons',index:'15',icon:ArrowRight},
  ]
- const currentSection=sections.find(item=>item.id===activeSection)||sections[0]
  const copyFields=contentSections.find(section=>section.id===activeSection)?.fields||[]
  const copyGroups=[...new Set(copyFields.map(field=>field.group))].map(name=>({name,fields:copyFields.filter(field=>field.group===name)}))
  const applyTemplateSample=(sample:Record<string,unknown>)=>{
@@ -557,23 +554,12 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   if(!tab){setPreviewError('Allow pop-ups to open the preview.');return}
   tab.document.open();tab.document.write(previewHtml);tab.document.close()
  }
+ const seoPreviewTitle=form.seo_title.trim()||form.name.trim()||'Accommodation listing'
+ const seoPreviewDescription=form.meta_description.trim()||form.description.trim().slice(0,155)||'Add a meta description to preview this result.'
+ const seoPreviewUrl=form.canonical_override.trim()||window.location.origin+'/property/'+encodeURIComponent(form.slug||'new-page')
  const previewWidth=previewMode==='desktop'?1280:390
  
  return <div className="drawer-shade accom-editor-overlay" role="presentation">
-  {seoOpen&&<div className="accom-seo-modal-backdrop" role="presentation">
-   <section className="accom-seo-modal" role="dialog" aria-modal="true" aria-label="Page SEO settings">
-    <div className="accom-seo-modal-header"><div><span className="eyebrow">PAGE SETTINGS</span><h3>SEO & publishing</h3><p>Search metadata is separate from the 13 visible page sections.</p></div><button type="button" aria-label="Close SEO settings" onClick={()=>setSeoOpen(false)}><X size={17}/></button></div>
-    <div className="accom-seo-modal-fields">
-     <label>Page URL slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Auto-created from the property name"/></label>
-     <label>SEO title<input maxLength={250} value={form.seo_title||''} onChange={e=>set('seo_title',e.target.value)}/></label>
-     <label>Meta description<textarea rows={3} maxLength={400} value={form.meta_description||''} onChange={e=>set('meta_description',e.target.value)}/></label>
-     <label className="checkline"><input type="checkbox" checked={!!form.noindex} onChange={e=>set('noindex',e.target.checked)}/> Prevent indexing (noindex)</label>
-     <label className="checkline"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demo content — publishing blocked until verified</label>
-     <p className="accom-fields-help">This panel changes page metadata and draft status only. Publishing remains an administrator action in All Pages.</p>
-    </div>
-    <div className="accom-seo-modal-footer"><button type="button" className="primary compact" onClick={()=>setSeoOpen(false)}>Back to editor</button></div>
-   </section>
-  </div>}
   <div className="accom-editor-shell" role="region" aria-label="Accom Category page editor">
    <aside className="category-sidebar accom-editor-site-sidebar" aria-label="Content manager navigation">
     <div className="category-sidebar-brand"><Logo/><small>CONTENT MANAGER</small></div>
@@ -594,7 +580,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
     </div>
     <div className="accom-editor-head-actions">
       <span className={'accom-editor-saving-state '+(dirty?'unsaved':'')}>{busy?'Saving…':dirty?'Unsaved changes':'Saved'}</span>
-      <button type="button" className="outline" onClick={()=>setSeoOpen(true)}><Search size={15}/> SEO settings</button>
+      <button type="button" className="outline" onClick={()=>document.getElementById("accom-seo-settings")?.scrollIntoView({block:"start",behavior:"smooth"})}><Search size={15}/> SEO settings</button>
       <button type="button" className="outline" onClick={openFullPreview} disabled={!sourceReference&&!previewHtml}> <ImageIcon size={15}/> Preview</button>
       <button type="submit" form="accom-property-edit-form" className="primary" disabled={busy}><Check size={15}/>{busy?'Saving…':'Save draft'}</button>
     </div>
@@ -602,24 +588,35 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
    {error&&<p className="error accom-editor-inline-error" role="alert">{error}</p>}
    <form id="accom-property-edit-form" onSubmit={submit} className="drawer-form accom-editor-form">
     <div className="accom-editor-workspace">
-     <aside className="accom-editor-sidebar" aria-label="Page sections">
-      <div className="accom-editor-pane-heading"><strong>Edit sections</strong><span>{sections.length} sections</span></div>
-      <nav className="accom-editor-sections" aria-label="Choose editing section">
-       {sections.map(item=>{const Icon=item.icon;return <button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>{setActiveSection(item.id);fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})}}><Icon size={15}/><span>{item.title}</span><span className="accom-editor-section-index">{item.index}</span></button>})}
-      </nav>
-      <div className="accom-editor-side-note">Fields follow the approved property layout. <button type="button" onClick={()=>{setSourceReference(true);setSourceSection('top')}}>View original design</button></div>
-     </aside>
-     <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
-      <div className="accom-editor-fields-head"><span className="eyebrow">SECTION {currentSection.index}</span><h3>{currentSection.title}</h3><p>{currentSection.desc}</p></div>
-      <div className="accom-editor-fields-body">
+     <div className="accom-editor-content-grid">
+     <div className="accom-stacked-sections" aria-label="Page content sections">
+       <div className="accom-editor-list-intro">
+         <span className="accom-section-eyebrow">01 / PAGE CONTENT</span>
+         <h2>Edit page sections</h2>
+         <p>Open any section to edit its content. Sections follow the original Accom property page order.</p>
+         <div className="accom-editor-list-meta"><span>{sections.length} content sections</span><button type="button" onClick={()=>document.getElementById('accom-seo-settings')?.scrollIntoView({block:'start',behavior:'smooth'})}>Go to SEO settings <ArrowRight size={12}/></button></div>
+       </div>
        {(usingTemplateSample||form.is_demo)&&<div className="accom-template-sample-note" role="status">
         <strong>Demonstration content — verification required</strong>
         <p>{usingTemplateSample?'Examples from the approved template have filled empty draft fields. They are not verified property details and nothing is saved until you choose Save draft.':'This draft contains demonstration material. Confirm actual property details before publishing.'}</p>
        </div>}
-       {!usingTemplateSample&&templateSample&&!source?.published&&(activeSection==='top'||activeSection==='gallery')&&<div className="accom-template-optional">
-        <span>Want to start with the original template's illustrative content?</span>
-        <button type="button" onClick={()=>applyTemplateSample(templateSample)}>Fill blank fields with sample content</button>
+       {!usingTemplateSample&&templateSample&&!source?.published&&<div className="accom-template-optional">
+        <span>Use illustrative content from the original template?</span>
+        <button type="button" onClick={()=>applyTemplateSample(templateSample)}>Fill blank draft fields</button>
        </div>}
+       {sections.map(item=>{
+        const expanded=activeSection===item.id
+        const extraCount=contentSections.find(section=>section.id===item.id)?.fields.length||0
+        const detail=item.id==='gallery'?form.gallery.length+' photos':item.id==='overview'?form.highlights.length+' highlights':item.id==='rooms'?(source?.rooms?.length||0)+' room types':item.id==='faqs'?form.faq.length+' FAQs':item.id==='rules'?form.policies.length+' policies':item.id==='location'?form.landmarks.length+' landmarks':item.id==='amenities'?form.amenities.length+' amenities':item.id==='reviews'?form.reviews.length+' reviews':extraCount+' editable fields'
+        return <section className={'accom-stack-section '+(expanded?'expanded':'')} id={'accom-section-'+item.id} key={item.id} aria-label={item.title}>
+         <button type="button" className="accom-stack-toggle" aria-expanded={expanded} aria-controls={'accom-section-panel-'+item.id} onClick={()=>setActiveSection(expanded?'':item.id)}>
+          <span className="accom-stack-index">{item.index}</span>
+          <span className="accom-stack-heading"><strong>{item.title}</strong><small>{detail} · Original page order</small></span>
+          <ChevronDown className="accom-stack-chevron" size={17}/>
+         </button>
+         {expanded&&<div className="accom-stack-expanded" id={'accom-section-panel-'+item.id}>
+           <div className="accom-stack-content-intro"><h3>{item.title}</h3><p>{item.desc}</p></div>
+           <div className="accom-editor-fields-body">
        {activeSection!=='top'&&copyEditor}
 
        {activeSection==='top'&&<div className="accom-edit-card-stack">
@@ -691,8 +688,12 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
        </div>}
        {activeSection==='top'&&copyEditor}
 
-      </div>
-     </main>
+
+           </div>
+         </div>}
+        </section>
+       })}
+     </div>
      <section className="accom-editor-preview" aria-label="Complete Accom property preview">
       <div className="accom-editor-preview-head">
         <div className="accom-editor-preview-label"><h3>Live Preview</h3><small>{sourceReference?'Approved original page · read-only':'Actual property layout · updates as you type'}</small></div>
@@ -712,6 +713,50 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
         </div>:<div className="accom-editor-preview-empty"><ImageIcon size={30}/><strong>{source?'Preparing draft preview':'Save a draft to preview its data'}</strong></div>}
       </div>
       <div className="accom-editor-preview-foot"><span>{sourceReference?'Original template · select Draft to see edits.':previewLoading?'Updating preview…':previewError||'Preview only · Changes are not published'}</span></div>
+     </section>
+     </div>
+     <section className="accom-editor-seo-section" id="accom-seo-settings" aria-label="SEO Settings">
+      <div className="accom-seo-section-intro">
+       <span className="accom-section-eyebrow">02 / SEARCH</span>
+       <h2>SEO Settings</h2>
+       <p>Set the information search engines use for this page.</p>
+      </div>
+      <div className="accom-seo-settings-fields">
+       <label>SEO title <span className="accom-seo-field-count">{form.seo_title.length}/250</span>
+        <input maxLength={250} value={form.seo_title} onChange={e=>set('seo_title',e.target.value)} placeholder="Your unique search title"/>
+       </label>
+       <label>Meta description <span className="accom-seo-field-count">{form.meta_description.length}/400</span>
+        <textarea rows={3} maxLength={400} value={form.meta_description} onChange={e=>set('meta_description',e.target.value)} placeholder="Brief, useful page description"/>
+       </label>
+       <div className="accom-seo-switch-row">
+        <label className="accom-seo-switch">
+         <span className="accom-seo-switch-copy"><strong>Allow indexing</strong><small>{form.noindex?'Off · Ask search engines not to show this page in results.':'On · Allow search engines to index this page when it is published.'}</small></span>
+         <input type="checkbox" role="switch" aria-label="Allow indexing" checked={!form.noindex} onChange={e=>set('noindex',!e.target.checked)}/>
+         <span className="accom-seo-switch-track" aria-hidden="true"><i/></span>
+        </label>
+        <label className="accom-seo-switch">
+         <span className="accom-seo-switch-copy"><strong>Follow links</strong><small>{form.nofollow?'Off · Ask search engines not to follow links.':'On · Allow search engines to follow links on this page.'}</small></span>
+         <input type="checkbox" role="switch" aria-label="Follow links" checked={!form.nofollow} onChange={e=>set('nofollow',!e.target.checked)}/>
+         <span className="accom-seo-switch-track" aria-hidden="true"><i/></span>
+        </label>
+       </div>
+       <label>Canonical override (optional)
+        <input value={form.canonical_override} onChange={e=>set('canonical_override',e.target.value)} placeholder="Automatic self-canonical — or enter an https:// URL"/>
+        <small>Leave blank to use the property's own canonical URL.</small>
+       </label>
+       <div className="accom-seo-snippet" aria-label="Search result preview">
+        <span>Search result preview</span>
+        <p className="accom-seo-snippet-url">{seoPreviewUrl}</p>
+        <strong>{seoPreviewTitle}</strong>
+        <p>{seoPreviewDescription}</p>
+        <small>Search engines can rewrite how your page appears.</small>
+       </div>
+       <div className="accom-seo-publishing">
+        <label>Page URL slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Automatically created from property name"/></label>
+        <label className="accom-seo-demo-checkbox"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demonstration content — publishing remains blocked until verified</label>
+        <p>SEO settings are saved with your draft. Publishing is a separate action in All Pages; a draft or demonstration page stays non-indexable even when Allow indexing is on.</p>
+       </div>
+      </div>
      </section>
     </div>
    </form>

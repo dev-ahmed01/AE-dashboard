@@ -341,17 +341,30 @@ def render_property(p, payload, public_site_url, preview=False):
     title = soup.head.find("title")
     if title:
         title.string = _text(getattr(p, "seo_title", "")) or name + " | Accom by Emlen"
+    # Index and follow are independent on published/verified pages. All
+    # preview and demonstration HTML remains noindex,nofollow regardless of UI.
+    blocked = bool(preview or demo)
+    robots = (
+        ("noindex" if blocked or bool(getattr(p, "noindex", False)) else "index") +
+        "," +
+        ("nofollow" if blocked or bool(getattr(p, "nofollow", False)) else "follow")
+    )
     for key, value in (("description", _text(getattr(p, "meta_description", "")) or desc[:160]),
-                       ("robots", "noindex,nofollow" if preview or demo or bool(getattr(p, "noindex", False))
-                        else "index,follow")):
+                       ("robots", robots)):
         tag = soup.head.find("meta", attrs={"name": key})
         if not tag:
             tag = soup.new_tag("meta", attrs={"name": key})
             soup.head.append(tag)
         tag["content"] = value
-    canonical = soup.new_tag("link", attrs={"rel": "canonical",
-        "href": public_site_url.rstrip("/") + "/property/" + quote(_text(getattr(p, "slug", "")))})
-    soup.head.append(canonical)
+    automatic_canonical = public_site_url.rstrip("/") + "/property/" + quote(_text(getattr(p, "slug", "")))
+    override = _text(getattr(p, "canonical_override", "")).strip()
+    canonical_url = override if (override.startswith("https://") and
+                                 not any(char.isspace() or char in ("<", ">", '"', chr(39)) for char in override)) else automatic_canonical
+    canonical = soup.head.find("link", attrs={"rel": "canonical"})
+    if canonical is None:
+        canonical = soup.new_tag("link", attrs={"rel": "canonical"})
+        soup.head.append(canonical)
+    canonical["href"] = canonical_url
     schema = {"@context": "https://schema.org", "@type": "ApartmentComplex", "name": name,
               "address": {"@type": "PostalAddress", "streetAddress": _text(getattr(p, "address", "")),
                           "addressLocality": city, "addressCountry": _text(getattr(p, "country", ""))}}
