@@ -101,6 +101,7 @@ try {
   await page.getByRole('textbox',{name:'Property name'}).fill('Visual QA Updated Residence');
   await page.getByRole('textbox',{name:'City',exact:true}).fill('Birmingham');
   await page.getByRole('textbox',{name:'Address',exact:true}).fill('10 Example Road');
+  await page.getByRole('button',{name:/Residence overview/}).click();
   await page.getByRole('textbox',{name:'Overview / property description'}).fill(
     'A demonstration accommodation listing for testing the Category editing experience.'
   );
@@ -109,7 +110,7 @@ try {
     return iframe?.contentDocument?.querySelector('.property-heading h1')?.textContent==='Visual QA Updated Residence';
   },null,{timeout:20000});
 
-  await page.getByRole('button',{name:/Property photos/}).click();
+  await page.getByRole('button',{name:/Hero & gallery/}).click();
   await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).click();
   await page.getByPlaceholder('https://example.com/photo.webp or upload below').fill('/accom-template/assets/ensuite.webp');
   await page.getByPlaceholder('Describe the actual image').fill('Illustrative accommodation interior');
@@ -120,17 +121,35 @@ try {
   },null,{timeout:20000});
   await page.screenshot({path:'qa/evidence/editor-desktop.png'});
 
-  await page.getByRole('button',{name:/Highlights & amenities/}).click();
+  await page.getByRole('button',{name:/Residence overview/}).click();
   await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).first().click();
-  await page.getByRole('textbox',{name:'Highlight text'}).fill('Premium student support');
+  await page.getByRole('textbox',{name:'Highlight title',exact:true}).fill('Premium student support');
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
     return frame?.contentDocument?.body?.textContent?.includes('Premium student support');
   },null,{timeout:20000});
 
+  assert.equal(await page.locator('.accom-editor-section-nav').count(),13,
+    'Editor navigation must reflect all thirteen approved visual sections');
+  await page.getByRole('button',{name:/Property details/}).click();
+  await page.locator('.accom-copy-field').first().waitFor({state:'visible',timeout:15000});
+  const actualCopy = await page.locator('.accom-copy-field input,.accom-copy-field textarea').first().inputValue();
+  assert(actualCopy.trim().length>1,'Mapped page fields must be prefilled from the rendered design');
+  const storyHeading = page.locator('.accom-copy-field').filter({hasText:'Living at'}).first().locator('input,textarea').first();
+  await storyHeading.fill('Designed around your student life');
+  await page.waitForFunction(()=>{
+    const frame=document.querySelector('iframe[title="Live property page visual preview"]');
+    return frame?.contentDocument?.querySelector('#about h2')?.textContent?.includes('Designed around your student life');
+  },null,{timeout:20000});
+  await page.screenshot({path:'qa/evidence/prefilled-page-copy-edit.png'});
+  await page.getByRole('button',{name:'SEO settings'}).click();
+  assert(await page.getByRole('dialog',{name:'Page SEO settings'}).isVisible(),'SEO must be separate from visual sections');
+  await page.getByRole('button',{name:'Back to editor'}).click();
+  assert.equal(await page.locator('.accom-editor-section-nav').count(),13);
+
   await page.setViewportSize({width:390,height:844});
   await page.waitForFunction(()=>document.querySelector('.accom-editor-device-toggle button:last-child')?.getAttribute('aria-pressed')==='true',{timeout:10000});
-  await page.getByRole('button',{name:/Property photos/}).click();
+  await page.getByRole('button',{name:/Hero & gallery/}).click();
   await page.locator('.accom-editor-preview').scrollIntoViewIfNeeded();
   await page.screenshot({path:'qa/evidence/editor-mobile.png'});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);

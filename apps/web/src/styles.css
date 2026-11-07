@@ -1013,3 +1013,39 @@ section.category-split-workspace.category-add-page{
  .category-content .category-search{width:100%;min-width:0}
  .category-content .category-page-row{min-height:88px}
 }
+
+
+/* The approved property's thirteen editable sections and separate SEO controls. */
+.accom-editor-section-nav{min-height:43px;padding:10px 11px;gap:9px}
+.accom-editor-section-nav span:nth-child(2){font-size:10px;line-height:1.25}
+.accom-editor-section-index{font-size:9px}
+.accom-fields-help{font-size:11px;line-height:1.6;color:#7b7f86;margin:7px 0 13px}
+.accom-room-editor-heading,.accom-copy-panel-heading{display:flex;align-items:start;justify-content:space-between;gap:8px;margin-bottom:13px}
+.accom-room-editor-heading strong,.accom-copy-panel-heading strong{font-size:12px;color:#27282c}
+.accom-room-editor-heading span,.accom-copy-panel-heading>span{font-size:10px;color:#7b818b;white-space:nowrap}
+.accom-room-editor-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #ededf0}
+.accom-room-editor-row:first-of-type{border-top:1px solid #ededf0}
+.accom-room-editor-row>div{min-width:0;display:flex;flex-direction:column;gap:3px}
+.accom-room-editor-row strong{font-size:11px;line-height:1.4}
+.accom-room-editor-row small{font-size:10px;color:#777d88}
+.accom-room-editor-row button{flex:none;padding:7px 10px;font-size:10px;min-height:32px}
+.accom-copy-panel{border-top:1px solid #ebecef;margin-top:25px;padding-top:20px}
+.accom-copy-panel-heading p{font-size:10px;line-height:1.55;margin:5px 0 0;max-width:350px}
+.accom-copy-field{display:block!important;margin-bottom:13px!important}
+.accom-copy-field>span{display:block;font-size:10px;color:#4f5560;font-weight:700;margin-bottom:5px;line-height:1.4;overflow-wrap:anywhere}
+.accom-copy-field input,.accom-copy-field textarea{font-size:11px!important;line-height:1.5;min-height:37px!important;padding:10px 12px!important}
+.accom-copy-field input[type=file]{font-size:10px!important;margin-top:8px}
+.accom-copy-expand{width:100%;margin-top:3px;padding:11px;border:1px solid #e4e4e7;background:#fafafa;color:#ed2024;border-radius:9px;font-size:11px;font-weight:700}
+.accom-copy-expand:hover{background:#fff2f2}
+.accom-seo-modal-backdrop{position:fixed;inset:0;z-index:1000;display:flex;justify-content:center;align-items:center;background:rgba(18,19,22,.52);padding:16px}
+.accom-seo-modal{width:min(500px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;background:#fff;border:1px solid #e6e6e9;border-radius:18px;box-shadow:0 24px 75px rgba(0,0,0,.18)}
+.accom-seo-modal-header{display:flex;align-items:start;justify-content:space-between;gap:10px;padding:22px 23px 15px;border-bottom:1px solid #f0f0f1}
+.accom-seo-modal-header h3{font-size:22px;line-height:1.2;margin:5px 0}
+.accom-seo-modal-header p{font-size:11px;margin:6px 0 0;color:#717783;line-height:1.45}
+.accom-seo-modal-header>button{padding:7px;border-radius:8px}
+.accom-seo-modal-fields{display:grid;gap:15px;padding:21px 23px}
+.accom-seo-modal-fields>label:not(.checkline){display:flex;flex-direction:column;font-size:11px;font-weight:700;color:#30343b;gap:7px}
+.accom-seo-modal-fields input:not([type=checkbox]),.accom-seo-modal-fields textarea{width:100%;padding:11px 12px;border:1px solid #dfe1e5;border-radius:9px;background:#fff;font-size:12px;outline-offset:2px}
+.accom-seo-modal-fields .checkline{font-size:11px;line-height:1.45}
+.accom-seo-modal-footer{padding:13px 23px 21px;display:flex;justify-content:flex-end}
+@media(max-width:740px){.accom-editor-section-nav{min-width:150px}.accom-seo-modal-header,.accom-seo-modal-fields{padding-left:17px;padding-right:17px}}

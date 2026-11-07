@@ -7,7 +7,9 @@ type Room={id:number;property_id:number;name:string;room_type:string;details:str
 type Pair={question:string;answer:string}
 type Landmark={name:string;detail:string}
 type Media={url:string;alt:string;category?:string;layout?:'regular'|'large'}
-type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;rooms?:Room[]}
+type MasterField={key:string;section:string;kind:'text'|'href'|'src'|'alt';label:string;value:string}
+type MasterSection={id:string;title:string;fields:MasterField[]}
+type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;rooms?:Room[]}
 type User={id:number;name:string;email:string;role:string}
 type LoginResult={token:string;user:User}
 type Enquiry={id:number;property:string;property_id:number;room_id:number|null;name:string;email:string;phone:string;university:string;move_in_date:string|null;message:string;status:string;assigned_to_id:number|null;created_at:string}
@@ -33,7 +35,7 @@ const fmt=(d?:string|null)=>d?new Date(d).toLocaleDateString('en-GB',{day:'numer
 const readPath=()=>window.location.pathname
 type Offer={title:string;description:string;valid_until?:string}
 type Review={name:string;quote:string;source_url:string}
-const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',published:false,noindex:false,seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
+const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
 const blankRoom={name:'',room_type:'En suite',details:'',size_sqm:null as number|null,kitchen:'Shared',bathroom:'Private',price:null as number|null,currency:'GBP',price_period:'week',available_from:null as string|null,availability:'enquire',rate_checked_at:null as string|null,source_url:'',image_url:'',image_alt:'',image_layout:'regular' as 'regular'|'large',active:true,tenancies:[] as Tenancy[]}
 
 function Logo(){return <span className="brand"><span className="brand-icon">a<span>.</span></span><span className="brand-text">accom<small>BY EMLEN</small></span></span>}
@@ -320,7 +322,7 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
      </div>
     </section>
    </div>}
-  {(editing||creating)&&<PropertyEditor source={editing} close={()=>{setEditing(null);setCreating(false)}} saved={()=>{refresh();setEditing(null);setCreating(false);setTab('All Pages');setNotice('Property saved as draft')}}/>}
+  {(editing||creating)&&<PropertyEditor source={editing} close={()=>{setEditing(null);setCreating(false)}} saved={()=>{refresh();setEditing(null);setCreating(false);setTab('All Pages');setNotice('Property saved as draft')}} editRoom={chosen=>{if(!editing)return;setEditing(null);setRoomParent(editing);setRoom(chosen)}}/>}
   {roomParent&&<RoomManager p={roomParent} close={()=>setRoomParent(null)} saved={()=>{refresh();setRoomParent(null);setNotice('Room changes saved')}} current={room} setCurrent={setRoom}/>}
   {showApprovedDesign&&<div className="category-preview-overlay accom-original-source-modal" role="dialog" aria-modal="true" aria-label="Approved Accom source design"><div className="category-preview-bar"><div><strong>Approved Accom property design</strong><small>Exact deployed page · 13 sections · interactive reference · no real enquiries are submitted</small></div><button type="button" className="outline tiny" onClick={()=>setShowApprovedDesign(false)}>Back to Category <X size={15}/></button></div><iframe className="accom-original-page-frame" title="Complete original Accom property page" src="/accom-live/index.html" sandbox="allow-scripts allow-popups"/></div>}
   {preview&&<div className="category-preview-overlay"><div className="category-preview-bar"><strong>Preview · {preview.name} {preview.published?'':'(Draft)'}</strong><button className="outline tiny" onClick={()=>setPreview(null)}>Close preview <X size={15}/></button></div><div className="category-preview-scroll"><Listing slug={preview.slug} go={go} user={user} previewData={preview}/></div></div>}
@@ -339,19 +341,20 @@ function EditorialEditor({page,templates,close,onSaved}:{page:Editorial;template
 }
 
 const MASTER_PREVIEW_SELECTOR:Record<string,string> = {
- essentials:'#top',
- gallery:'section.gallery',
- highlights:'#amenities',
- policies:'#rules',
- landmarks:'#location',
- offers:'#reviews',
- seo:'#top',
+ top:'#top', overview:'#overview', about:'#about', tours:'#tours',
+ amenities:'#amenities', rooms:'#rooms', rules:'#rules', payments:'#payments',
+ floorplan:'#floorplan', neighbourhood:'#neighbourhood', faqs:'#faqs',
+ location:'#location', reviews:'#reviews',
 }
 
-function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>void;saved:()=>void}){
+function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;close:()=>void;saved:()=>void;editRoom:(room:Room|null)=>void}){
  const [form,setForm]=useState({...defaults,...(source||{}),gallery:(source?.gallery||[]).map((photo,i):Media=>({...photo,layout:photo.layout||(i===0?'large':'regular')}))})
  const [busy,setBusy]=useState(false),[error,setError]=useState('')
- const [activeSection,setActiveSection]=useState('essentials')
+ const [activeSection,setActiveSection]=useState('top')
+ const [seoOpen,setSeoOpen]=useState(false)
+ const [contentSections,setContentSections]=useState<MasterSection[]>([])
+ const [contentError,setContentError]=useState('')
+ const [expandedCopy,setExpandedCopy]=useState<Record<string,boolean>>({})
  const [previewHtml,setPreviewHtml]=useState('')
  const [previewLoading,setPreviewLoading]=useState(false)
  const [previewError,setPreviewError]=useState('')
@@ -379,15 +382,15 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
  const submit=async(e:React.FormEvent)=>{
   e.preventDefault()
   if(form.name.trim().length<3||form.city.trim().length<2){
-   setActiveSection('essentials')
+   setActiveSection('top')
    fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})
-   setError('Complete the property name and city in Property essentials before saving.')
+   setError('Complete the property name and city in Hero & gallery before saving.')
    return
   }
   setBusy(true);setError('');setSaveNotice('');
   const trimmed=(s:string)=>s.trim()
   const data={...form,
-   highlights:form.highlights.map(trimmed).filter(Boolean),amenities:form.amenities.map(trimmed).filter(Boolean),
+   highlights:form.highlights.map(trimmed).filter(Boolean),highlight_descriptions:form.highlights.map((_,i)=>trimmed(form.highlight_descriptions[i]||'')),amenities:form.amenities.map(trimmed).filter(Boolean),
    gallery:form.gallery.filter(p=>p.url.trim()).map(p=>({...p,url:p.url.trim(),alt:p.alt?.trim()||form.name+' accommodation photo',layout:p.layout||'regular'})),
    floorplans:form.floorplans.filter(p=>p.url.trim()).map(p=>({...p,url:p.url.trim(),alt:p.alt?.trim()||'Floor plan',layout:p.layout||'regular'})),
    faq:form.faq.filter(p=>p.question.trim()||p.answer.trim()),policies:form.policies.filter(p=>p.question.trim()||p.answer.trim()),
@@ -424,15 +427,31 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
   previewFrameRef.current?.contentWindow?.postMessage({type:'accom-open-section',id},'*')
  }
  const sections=[
-  {id:'essentials',title:'Property essentials',desc:'Identity, address and introduction',index:'01',icon:LayoutDashboard},
-  {id:'gallery',title:'Property photos',desc:'Gallery layout and image sizing',index:'02',icon:ImageIcon},
-  {id:'highlights',title:'Highlights & amenities',desc:'Key features and virtual tour',index:'03',icon:Sparkles},
-  {id:'policies',title:'Policies & FAQs',desc:'Resident information and answers',index:'04',icon:ShieldCheck},
-  {id:'landmarks',title:'Landmarks & floor plans',desc:'Nearby places and visual plans',index:'05',icon:MapPin},
-  {id:'offers',title:'Offers & reviews',desc:'Promotions, trust and sources',index:'06',icon:Heart},
-  {id:'seo',title:'SEO & publishing',desc:'Metadata and index settings',index:'07',icon:Search},
+  {id:'top',title:'Hero & gallery',desc:'Property identity, contact and photography',index:'01',icon:LayoutDashboard},
+  {id:'overview',title:'Residence overview',desc:'Introduction and key highlights',index:'02',icon:Home},
+  {id:'about',title:'Property details',desc:'Living experience and property story',index:'03',icon:Sparkles},
+  {id:'tours',title:'Photos & virtual tour',desc:'Photo categories and virtual visits',index:'04',icon:ImageIcon},
+  {id:'amenities',title:'Amenities & bills',desc:'Facilities, utilities and cost information',index:'05',icon:Check},
+  {id:'rooms',title:'Rooms & price choices',desc:'Room inventory, prices and tenancy options',index:'06',icon:LayoutDashboard},
+  {id:'rules',title:'House rules',desc:'Policies and resident conditions',index:'07',icon:ShieldCheck},
+  {id:'payments',title:'Payments & fees',desc:'Fees, offers and payment guidance',index:'08',icon:Wallet},
+  {id:'floorplan',title:'Floor plans',desc:'Property layouts and plans',index:'09',icon:ImageIcon},
+  {id:'neighbourhood',title:'Neighbourhood',desc:'Local area and student life',index:'10',icon:MapPin},
+  {id:'faqs',title:'Frequently asked questions',desc:'Student questions and answers',index:'11',icon:Search},
+  {id:'location',title:'Landmarks & location',desc:'University connections and nearby places',index:'12',icon:Compass},
+  {id:'reviews',title:'Student reviews',desc:'Testimonials, ratings and attribution',index:'13',icon:Heart},
  ]
  const currentSection=sections.find(item=>item.id===activeSection)||sections[0]
+ const copyFields=contentSections.find(section=>section.id===activeSection)?.fields||[]
+ const selectedCopy=expandedCopy[activeSection]?copyFields:copyFields.slice(0,9)
+ useEffect(()=>{
+  if(!source?.id)return
+  let alive=true
+  setContentError('')
+  api<{sections:MasterSection[]}>('/api/admin/properties/'+source.id+'/content-map').then(data=>{if(alive)setContentSections(data.sections)}).catch(e=>{if(alive)setContentError((e as Error).message)})
+  return()=>{alive=false}
+ },[source?.id])
+ const updateCopy=(key:string,value:string)=>setForm(f=>({...f,content_overrides:{...(f.content_overrides||{}),[key]:value}}))
  const previewSignature=JSON.stringify(form)
  useEffect(()=>{
   if(!source?.id){setPreviewHtml('');return}
@@ -487,6 +506,20 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
  const previewWidth=previewMode==='desktop'?1280:390
  
  return <div className="drawer-shade accom-editor-overlay" role="presentation">
+  {seoOpen&&<div className="accom-seo-modal-backdrop" role="presentation">
+   <section className="accom-seo-modal" role="dialog" aria-modal="true" aria-label="Page SEO settings">
+    <div className="accom-seo-modal-header"><div><span className="eyebrow">PAGE SETTINGS</span><h3>SEO & publishing</h3><p>Search metadata is separate from the 13 visible page sections.</p></div><button type="button" aria-label="Close SEO settings" onClick={()=>setSeoOpen(false)}><X size={17}/></button></div>
+    <div className="accom-seo-modal-fields">
+     <label>Page URL slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Auto-created from the property name"/></label>
+     <label>SEO title<input maxLength={250} value={form.seo_title||''} onChange={e=>set('seo_title',e.target.value)}/></label>
+     <label>Meta description<textarea rows={3} maxLength={400} value={form.meta_description||''} onChange={e=>set('meta_description',e.target.value)}/></label>
+     <label className="checkline"><input type="checkbox" checked={!!form.noindex} onChange={e=>set('noindex',e.target.checked)}/> Prevent indexing (noindex)</label>
+     <label className="checkline"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demo content — publishing blocked until verified</label>
+     <p className="accom-fields-help">This panel changes page metadata and draft status only. Publishing remains an administrator action in All Pages.</p>
+    </div>
+    <div className="accom-seo-modal-footer"><button type="button" className="primary compact" onClick={()=>setSeoOpen(false)}>Back to editor</button></div>
+   </section>
+  </div>}
   <div className="accom-editor-shell" role="region" aria-label="Accom Category page editor">
    <aside className="category-sidebar accom-editor-site-sidebar" aria-label="Content manager navigation">
     <div className="category-sidebar-brand"><Logo/><small>CONTENT MANAGER</small></div>
@@ -507,6 +540,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
     </div>
     <div className="accom-editor-head-actions">
       <span className={'accom-editor-saving-state '+(dirty?'unsaved':'')}>{busy?'Saving…':dirty?'Unsaved changes':'Saved'}</span>
+      <button type="button" className="outline" onClick={()=>setSeoOpen(true)}><Search size={15}/> SEO settings</button>
       <button type="button" className="outline" onClick={openFullPreview} disabled={!sourceReference&&!previewHtml}> <ImageIcon size={15}/> Preview</button>
       <button type="submit" form="accom-property-edit-form" className="primary" disabled={busy}><Check size={15}/>{busy?'Saving…':'Save draft'}</button>
     </div>
@@ -515,7 +549,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
    <form id="accom-property-edit-form" onSubmit={submit} className="drawer-form accom-editor-form">
     <div className="accom-editor-workspace">
      <aside className="accom-editor-sidebar" aria-label="Page sections">
-      <div className="accom-editor-pane-heading"><strong>Edit sections</strong><span>{sections.length} groups</span></div>
+      <div className="accom-editor-pane-heading"><strong>Edit sections</strong><span>{sections.length} sections</span></div>
       <nav className="accom-editor-sections" aria-label="Choose editing section">
        {sections.map(item=>{const Icon=item.icon;return <button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>{setActiveSection(item.id);fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})}}><Icon size={15}/><span>{item.title}</span><span className="accom-editor-section-index">{item.index}</span></button>})}
       </nav>
@@ -524,36 +558,63 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
      <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
       <div className="accom-editor-fields-head"><span className="eyebrow">SECTION {currentSection.index}</span><h3>{currentSection.title}</h3><p>{currentSection.desc}</p></div>
       <div className="accom-editor-fields-body">
-       {activeSection==='essentials'&&<div className="accom-fields-group">
-  <label>Property name<input required minLength={3} value={form.name} onChange={e=>set('name',e.target.value)}/></label><label className="checkline"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demonstration content — cannot be published until verified</label>
-  <div className="form-grid"><label>City<input required value={form.city} onChange={e=>set('city',e.target.value)}/></label><label>Country<input value={form.country} onChange={e=>set('country',e.target.value)}/></label><label>Postcode<input value={form.postcode} onChange={e=>set('postcode',e.target.value)}/></label><label>Nearby university<input value={form.university} onChange={e=>set('university',e.target.value)}/></label></div>
-  <label>Address<input value={form.address} onChange={e=>set('address',e.target.value)}/></label><label>Overview / property description<textarea rows={5} value={form.description} onChange={e=>set('description',e.target.value)}/></label>
-  </div>}
-       {activeSection==='gallery'&&<div className="accom-fields-group">
-  <RepeatableField title="Property photos" items={form.gallery} create={()=>({url:'',alt:'',category:'Rooms',layout:'regular' as const})} onChange={v=>set('gallery',v)} describe={(v,i)=>v.alt||v.category||`Picture ${i+1}`} help="Add approved images and choose Regular or Large for each one. Changes are shown in the listing mosaic."
-   render={(item,change)=>media(item,change,'Property')}/>
 
-  </div>}
-       {activeSection==='highlights'&&<div className="accom-fields-group"><RepeatableField title="Highlights" items={form.highlights} create={()=>''} onChange={v=>set('highlights',v)} describe={v=>v||'New highlight'} render={(v,change)=><label>Highlight text<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
-  <RepeatableField title="Amenities" items={form.amenities} create={()=>''} onChange={v=>set('amenities',v)} describe={v=>v||'New amenity'} render={(v,change)=><label>Amenity<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
-  <label>Virtual tour URL<input type="url" value={form.tour_url||''} onChange={e=>set('tour_url',e.target.value)}/></label>
-  </div>}
-       {activeSection==='policies'&&<div className="accom-fields-group">
-  <RepeatableField title="House rules & policies" items={form.policies} create={()=>({question:'',answer:''})} onChange={v=>set('policies',v)} describe={v=>v.question||'New policy'} render={(v,change)=><><label>Policy title<input value={v.question} onChange={e=>change({...v,question:e.target.value})}/></label><label>Details<textarea rows={2} value={v.answer} onChange={e=>change({...v,answer:e.target.value})}/></label></>}/>
-  <RepeatableField title="Frequently asked questions" items={form.faq} create={()=>({question:'',answer:''})} onChange={v=>set('faq',v)} describe={v=>v.question||'New FAQ'} render={(v,change)=><><label>Question<input value={v.question} onChange={e=>change({...v,question:e.target.value})}/></label><label>Answer<textarea rows={2} value={v.answer} onChange={e=>change({...v,answer:e.target.value})}/></label></>}/>
-  </div>}
-       {activeSection==='landmarks'&&<div className="accom-fields-group"><RepeatableField title="Nearby landmarks" items={form.landmarks} create={()=>({name:'',detail:''})} onChange={v=>set('landmarks',v)} describe={v=>v.name||'New landmark'} render={(v,change)=><><label>Landmark<input value={v.name} onChange={e=>change({...v,name:e.target.value})}/></label><label>Distance / description<input value={v.detail} onChange={e=>change({...v,detail:e.target.value})}/></label></>}/>
-  <RepeatableField title="Floor plans" items={form.floorplans} create={()=>({url:'',alt:'',category:'Floor plan',layout:'regular' as const})} onChange={v=>set('floorplans',v)} describe={(v,i)=>v.alt||`Floor plan ${i+1}`} render={(v,change)=>media(v,change,'Floor plan')}/>
-  </div>}
-       {activeSection==='offers'&&<div className="accom-fields-group"><RepeatableField title="Offers" items={form.offers} create={()=>({title:'',description:'',valid_until:''})} onChange={v=>set('offers',v)} describe={v=>v.title||'New offer'} render={(v,change)=><><label>Offer title<input value={v.title} onChange={e=>change({...v,title:e.target.value})}/></label><label>Description<textarea rows={2} value={v.description} onChange={e=>change({...v,description:e.target.value})}/></label><label>Valid until<input type="date" value={v.valid_until||''} onChange={e=>change({...v,valid_until:e.target.value})}/></label></>}/>
-  <RepeatableField title="Reviews" items={form.reviews} create={()=>({name:'',quote:'',source_url:''})} onChange={v=>set('reviews',v)} describe={v=>v.name||'New review'} help="Only enter reviews you are authorised to publish." render={(v,change)=><><label>Reviewer<input value={v.name} onChange={e=>change({...v,name:e.target.value})}/></label><label>Review<textarea rows={2} value={v.quote} onChange={e=>change({...v,quote:e.target.value})}/></label><label>Source URL<input type="url" value={v.source_url} onChange={e=>change({...v,source_url:e.target.value})}/></label></>}/>
-  <label>Original review-source URL<input type="url" value={form.review_source_url||''} onChange={e=>set('review_source_url',e.target.value)}/></label>
-  <div className="form-grid"><label>Source rating (0–5)<input type="number" min="0" max="5" step=".1" value={form.review_score??''} onChange={e=>set('review_score',e.target.value?Number(e.target.value):null)}/></label><label>Number of source reviews<input type="number" min="0" value={form.review_count??''} onChange={e=>set('review_count',e.target.value?Number(e.target.value):null)}/></label></div>
-  </div>}
-       {activeSection==='seo'&&<div className="accom-fields-group"><label>Page slug<input value={form.slug||''} onChange={e=>set('slug',e.target.value)} placeholder="Auto-created from name"/></label><label>SEO title<input value={form.seo_title||''} onChange={e=>set('seo_title',e.target.value)}/></label><label>Meta description<textarea rows={2} value={form.meta_description||''} onChange={e=>set('meta_description',e.target.value)}/></label>
-  <p className="editor-publish-note">Save this page as a draft. An administrator can publish it from All Pages after completing the checklist.</p>
-  <label className="checkline"><input type="checkbox" checked={!!form.noindex} onChange={e=>set('noindex',e.target.checked)}/> Noindex this listing</label>
-</div>}
+       {activeSection==='top'&&<div className="accom-fields-group">
+        <label>Property name<input required minLength={3} value={form.name} onChange={e=>set('name',e.target.value)}/></label>
+        <div className="form-grid"><label>City<input required value={form.city} onChange={e=>set('city',e.target.value)}/></label><label>Country<input value={form.country} onChange={e=>set('country',e.target.value)}/></label><label>Postcode<input value={form.postcode} onChange={e=>set('postcode',e.target.value)}/></label><label>Nearby university<input value={form.university} onChange={e=>set('university',e.target.value)}/></label></div>
+        <label>Address<input value={form.address} onChange={e=>set('address',e.target.value)}/></label>
+        <RepeatableField title="Hero gallery photos" items={form.gallery} create={()=>({url:'',alt:'',category:'Rooms',layout:'regular' as const})} onChange={v=>set('gallery',v)} describe={(v,i)=>v.alt||v.category||('Picture '+(i+1))} help="Use approved photos. Choose Regular or Large for the original gallery layout." render={(item,change)=>media(item,change,'Property')}/>
+       </div>}
+       {activeSection==='overview'&&<div className="accom-fields-group">
+        <label>Overview / property description<textarea rows={4} value={form.description} onChange={e=>set('description',e.target.value)}/></label>
+        <RepeatableField title="Property highlights" items={form.highlights.map((title,i)=>({title,detail:form.highlight_descriptions[i]||''}))} create={()=>({title:'',detail:''})} onChange={v=>setForm(f=>({...f,highlights:v.map(item=>item.title),highlight_descriptions:v.map(item=>item.detail)}))} describe={v=>v.title||'New highlight'} render={(v,change)=><><label>Highlight title<input value={v.title} onChange={e=>change({...v,title:e.target.value})}/></label><label>Highlight description<textarea rows={2} value={v.detail} onChange={e=>change({...v,detail:e.target.value})}/></label></>}/>
+       </div>}
+       {activeSection==='tours'&&<div className="accom-fields-group">
+        <label>Virtual tour link<input type="url" value={form.tour_url||''} onChange={e=>set('tour_url',e.target.value)}/></label>
+        <p className="accom-fields-help">Gallery photos are managed in Hero & gallery. This section includes the original photo-category and tour copy below.</p>
+       </div>}
+       {activeSection==='amenities'&&<div className="accom-fields-group">
+        <RepeatableField title="Amenities" items={form.amenities} create={()=>''} onChange={v=>set('amenities',v)} describe={v=>v||'New amenity'} render={(v,change)=><label>Amenity<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
+       </div>}
+       {activeSection==='rooms'&&<div className="accom-fields-group">
+        <div className="accom-room-editor-heading"><strong>Room inventory & tenancy plans</strong><span>{source?.rooms?.length||0} room records</span></div>
+        {source?.rooms?.length?source.rooms.map(room=><div className="accom-room-editor-row" key={room.id}>
+          <div><strong>{room.name}</strong><small>{room.room_type} · {room.availability} · {room.price===null?'Price on request':money(room.price,room.currency,room.price_period)}</small><small>{room.tenancies?.length||0} tenancy options</small></div>
+          <button type="button" className="outline tiny" onClick={()=>{if(dirty&&!window.confirm('Discard unsaved page changes to edit this room?'))return;editRoom(room)}}>Edit room</button>
+        </div>):<p className="accom-fields-help">No room types have been entered for this property yet.</p>}
+        <button type="button" className="outline compact" disabled={!source} onClick={()=>{if(dirty&&!window.confirm('Discard unsaved page changes to manage rooms?'))return;editRoom(null)}}>Add / manage rooms and tenancy options</button>
+       </div>}
+       {activeSection==='rules'&&<div className="accom-fields-group">
+        <RepeatableField title="House rules and policies" items={form.policies} create={()=>({question:'',answer:''})} onChange={v=>set('policies',v)} describe={v=>v.question||'New policy'} render={(v,change)=><><label>Policy title<input value={v.question} onChange={e=>change({...v,question:e.target.value})}/></label><label>Details<textarea rows={2} value={v.answer} onChange={e=>change({...v,answer:e.target.value})}/></label></>}/>
+       </div>}
+       {activeSection==='payments'&&<div className="accom-fields-group">
+        <RepeatableField title="Offers and promotions" items={form.offers} create={()=>({title:'',description:'',valid_until:''})} onChange={v=>set('offers',v)} describe={v=>v.title||'New offer'} render={(v,change)=><><label>Offer title<input value={v.title} onChange={e=>change({...v,title:e.target.value})}/></label><label>Details<textarea rows={2} value={v.description} onChange={e=>change({...v,description:e.target.value})}/></label><label>Valid until<input type="date" value={v.valid_until||''} onChange={e=>change({...v,valid_until:e.target.value})}/></label></>}/>
+       </div>}
+       {activeSection==='floorplan'&&<div className="accom-fields-group">
+        <RepeatableField title="Floor-plan images" items={form.floorplans} create={()=>({url:'',alt:'',category:'Floor plan',layout:'regular' as const})} onChange={v=>set('floorplans',v)} describe={(v,i)=>v.alt||('Floor plan '+(i+1))} render={(v,change)=>media(v,change,'Floor plan')}/>
+       </div>}
+       {activeSection==='faqs'&&<div className="accom-fields-group">
+        <RepeatableField title="Frequently asked questions" items={form.faq} create={()=>({question:'',answer:''})} onChange={v=>set('faq',v)} describe={v=>v.question||'New FAQ'} render={(v,change)=><><label>Question<input value={v.question} onChange={e=>change({...v,question:e.target.value})}/></label><label>Answer<textarea rows={2} value={v.answer} onChange={e=>change({...v,answer:e.target.value})}/></label></>}/>
+       </div>}
+       {activeSection==='location'&&<div className="accom-fields-group">
+        <RepeatableField title="Nearby landmarks" items={form.landmarks} create={()=>({name:'',detail:''})} onChange={v=>set('landmarks',v)} describe={v=>v.name||'New landmark'} render={(v,change)=><><label>Landmark<input value={v.name} onChange={e=>change({...v,name:e.target.value})}/></label><label>Distance / description<input value={v.detail} onChange={e=>change({...v,detail:e.target.value})}/></label></>}/>
+       </div>}
+       {activeSection==='reviews'&&<div className="accom-fields-group">
+        <RepeatableField title="Student reviews" items={form.reviews} create={()=>({name:'',quote:'',source_url:''})} onChange={v=>set('reviews',v)} describe={v=>v.name||'New review'} help="Only enter reviews authorised for publication." render={(v,change)=><><label>Reviewer<input value={v.name} onChange={e=>change({...v,name:e.target.value})}/></label><label>Review<textarea rows={2} value={v.quote} onChange={e=>change({...v,quote:e.target.value})}/></label><label>Source URL<input type="url" value={v.source_url} onChange={e=>change({...v,source_url:e.target.value})}/></label></>}/>
+        <label>Review source URL<input type="url" value={form.review_source_url||''} onChange={e=>set('review_source_url',e.target.value)}/></label>
+        <div className="form-grid"><label>Review score (0–5)<input type="number" min="0" max="5" step=".1" value={form.review_score??''} onChange={e=>set('review_score',e.target.value?Number(e.target.value):null)}/></label><label>Review count<input type="number" min="0" value={form.review_count??''} onChange={e=>set('review_count',e.target.value?Number(e.target.value):null)}/></label></div>
+       </div>}
+       <div className="accom-copy-panel">
+        <div className="accom-copy-panel-heading"><div><strong>Page content</strong><p>Prefilled from the actual approved design. Edit any copy, image description or link below.</p></div><span>{copyFields.length} mapped</span></div>
+        {contentError?<p className="error" role="alert">{contentError}</p>:null}
+        {selectedCopy.map(field=><label key={field.key} className="accom-copy-field">
+          <span>{field.label}</span>
+          {field.kind==='text'&&field.value.length>120?<textarea rows={3} value={form.content_overrides?.[field.key]??field.value} onChange={e=>updateCopy(field.key,e.target.value)}/>:<input type="text" value={form.content_overrides?.[field.key]??field.value} onChange={e=>updateCopy(field.key,e.target.value)}/>}
+          {field.kind==='src'&&<input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload replacement image" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{updateCopy(field.key,await uploadPhoto(file))}catch(err){setError((err as Error).message)}}}/>}
+        </label>)}
+        {copyFields.length>9&&<button type="button" className="accom-copy-expand" onClick={()=>setExpandedCopy(v=>({...v,[activeSection]:!v[activeSection]}))}>{expandedCopy[activeSection]?'Show fewer fields':'Show all '+copyFields.length+' mapped fields'}</button>}
+        {!copyFields.length&&!contentError&&<p className="accom-fields-help">{source?'Loading page content or no additional static copy in this section.':'Save the property as a draft to extract the actual template text.'}</p>}
+       </div>
       </div>
      </main>
      <section className="accom-editor-preview" aria-label="Complete Accom property preview">

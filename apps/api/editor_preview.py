@@ -12,7 +12,7 @@ TEXT_FIELDS = {
     'description', 'seo_title', 'meta_description', 'review_source_url', 'tour_url',
 }
 COLLECTIONS = {
-    'highlights', 'amenities', 'policies', 'faq', 'landmarks',
+    'highlights', 'highlight_descriptions', 'amenities', 'policies', 'faq', 'landmarks',
     'gallery', 'floorplans', 'offers', 'reviews',
 }
 WEB_IMAGE = re.compile(r'^https://[^\s<>"\']+$', re.I)
@@ -24,7 +24,7 @@ def _draft_list(key, value):
         return []
     result = []
     for item in value[:80]:
-        if key in ('highlights', 'amenities'):
+        if key in ('highlights', 'highlight_descriptions', 'amenities'):
             if isinstance(item, str) and item.strip():
                 result.append(item[:350])
             continue
@@ -58,7 +58,7 @@ def _draft_list(key, value):
 def render_draft(property_record, changes, snapshot, public_site_url):
     if not isinstance(changes, dict):
         changes = {}
-    fields = (TEXT_FIELDS | COLLECTIONS | {'slug', 'noindex', 'is_demo', 'review_score', 'review_count'})
+    fields = (TEXT_FIELDS | COLLECTIONS | {'slug', 'noindex', 'is_demo', 'review_score', 'review_count', 'content_overrides'})
     transient = SimpleNamespace(**{key: getattr(property_record, key, None) for key in fields})
     for key in TEXT_FIELDS:
         value = changes.get(key)
@@ -67,6 +67,8 @@ def render_draft(property_record, changes, snapshot, public_site_url):
     for key in COLLECTIONS:
         if key in changes:
             setattr(transient, key, _draft_list(key, changes[key]))
+    if isinstance(changes.get('content_overrides'), dict):
+        transient.content_overrides = dict(list(changes['content_overrides'].items())[:600])
     if isinstance(changes.get('is_demo'), bool):
         transient.is_demo = changes['is_demo']
     if isinstance(changes.get('noindex'), bool):

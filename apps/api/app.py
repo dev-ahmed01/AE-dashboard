@@ -31,6 +31,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numer
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 from original_runtime import render_property
+from page_content import describe, valid_overrides
 from editor_preview import render_draft
 from demo_seed import seed_kingston
 from project_inspector import inspect_project, extract_html_from_zip
@@ -87,7 +88,9 @@ class Property(Base):
     postcode: Mapped[str] = mapped_column(String(30), default='')
     university: Mapped[str] = mapped_column(String(180), default='')
     description: Mapped[str] = mapped_column(Text, default='')
+    content_overrides: Mapped[dict] = mapped_column(JSON, default=dict)
     highlights: Mapped[list] = mapped_column(JSON, default=list)
+    highlight_descriptions: Mapped[list] = mapped_column(JSON, default=list)
     amenities: Mapped[list] = mapped_column(JSON, default=list)
     policies: Mapped[list] = mapped_column(JSON, default=list)
     faq: Mapped[list] = mapped_column(JSON, default=list)
@@ -357,7 +360,7 @@ def prop_json(p, detail=False, staff=False):
     rooms=[room_json(r) for r in p.rooms if staff or (r.active and r.availability!='unavailable')]
     price,currency,period,note=_headline_rate(p)
     d={'id':p.id,'name':p.name,'slug':p.slug,'city':p.city,'country':p.country,'address':p.address,'postcode':p.postcode,'university':p.university,'description':p.description,'gallery':p.gallery,'published':p.published,'archived':p.archived,'is_demo':p.is_demo,'edit_version':p.edit_version,'verified_at':p.verified_at.isoformat() if p.verified_at else None,'from_price':price,'price_note':note,'currency':currency,'price_period':period}
-    if detail:d.update({'highlights':p.highlights,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'rooms':rooms})
+    if detail:d.update({'highlights':p.highlights,'highlight_descriptions':p.highlight_descriptions,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'content_overrides':p.content_overrides or {},'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'rooms':rooms})
     return d
 
 def slugify(t):
@@ -411,7 +414,9 @@ class PropertyInput(BaseModel):
     postcode: str = ''
     university: str = ''
     description: str = ''
+    content_overrides: dict[str,str] = Field(default_factory=dict)
     highlights: list[str] = Field(default_factory=list)
+    highlight_descriptions: list[str] = Field(default_factory=list)
     amenities: list[str] = Field(default_factory=list)
     policies: list[PairInput] = Field(default_factory=list)
     faq: list[PairInput] = Field(default_factory=list)
@@ -430,6 +435,12 @@ class PropertyInput(BaseModel):
     published: bool = False
     is_demo: bool = False
     edit_version: int | None = Field(default=None,ge=1)
+
+    @field_validator('content_overrides')
+    @classmethod
+    def validate_page_copy(cls, value):
+        return valid_overrides(value)
+
 class TenancyInput(BaseModel):
     weeks: int = Field(ge=0,le=104)
     start: str = Field(default='',max_length=80)
@@ -880,6 +891,15 @@ def update_cashback(id:int,data:CashbackInput,user:User=Depends(require_manager)
 
 def _seo_page_html(p,preview=False):
     return render_property(p,prop_json(p,detail=True,staff=preview),PUBLIC_SITE_URL,preview=preview)
+
+@app.get('/api/admin/properties/{id}/content-map')
+def property_content_map(id:int, user:User=Depends(require_admin), db:Session=Depends(get_db)):
+    """Prefill all thirteen visual sections from the actual rendered master."""
+    p=db.get(Property,id)
+    if not p:raise HTTPException(404,'Page not found')
+    html=render_property(p,prop_json(p,detail=True,staff=True),PUBLIC_SITE_URL,preview=True)
+    return {'sections':describe(html),'source':'approved-accom-master','total_sections':13}
+
 
 @app.post('/api/admin/properties/{id}/preview-draft',response_class=HTMLResponse)
 def preview_unsaved_property(id:int, data:dict, user:User=Depends(require_admin), db:Session=Depends(get_db)):
