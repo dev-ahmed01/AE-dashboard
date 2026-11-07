@@ -444,7 +444,7 @@ class PropertyInput(BaseModel):
     @field_validator('canonical_override')
     @classmethod
     def validate_canonical_override(cls, value):
-        if value and not re.fullmatch(r'https://[^\\s<>\"\']+', value, re.I):
+        if value and (not value.startswith('https://') or not value[8:] or any(char.isspace() or char in ('<','>','\"',chr(39)) for char in value)):
             raise ValueError('Canonical override must be an absolute HTTPS URL')
         return value
 
