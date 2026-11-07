@@ -135,6 +135,13 @@ try {
   await page.locator('.accom-copy-field').first().waitFor({state:'visible',timeout:15000});
   const actualCopy = await page.locator('.accom-copy-field input,.accom-copy-field textarea').first().inputValue();
   assert(actualCopy.trim().length>1,'Mapped page fields must be prefilled from the rendered design');
+  const storyHeading = page.locator('.accom-copy-field').filter({hasText:'Living at'}).first().locator('input,textarea').first();
+  await storyHeading.fill('Designed around your student life');
+  await page.waitForFunction(()=>{
+    const frame=document.querySelector('iframe[title="Live property page visual preview"]');
+    return frame?.contentDocument?.querySelector('#about h2')?.textContent?.includes('Designed around your student life');
+  },null,{timeout:20000});
+  await page.screenshot({path:'qa/evidence/prefilled-page-copy-edit.png'});
   await page.getByRole('button',{name:'SEO settings'}).click();
   assert(await page.getByRole('dialog',{name:'Page SEO settings'}).isVisible(),'SEO must be separate from visual sections');
   await page.getByRole('button',{name:'Back to editor'}).click();
