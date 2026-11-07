@@ -1270,3 +1270,24 @@ section.category-split-workspace.category-add-page{
 
 /* Keep SEO switch input clickable over its visible track. */
 .accom-editor-seo-section .accom-seo-switch input{position:absolute;right:17px;top:50%;transform:translateY(-50%);width:43px;height:24px;opacity:0;cursor:pointer;z-index:3;pointer-events:auto}
+
+
+/* SEO belongs below the section/preview grid, not beneath a sticky overlay. */
+.accom-editor-form .accom-editor-workspace{display:block;height:auto;overflow:visible}
+.accom-editor-content-grid{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(295px,360px);
+ align-items:start;gap:16px;min-width:0
+}
+.accom-editor-form .accom-editor-content-grid .accom-editor-preview{grid-column:2;grid-row:1;position:sticky;top:13px}
+.accom-editor-form .accom-editor-seo-section{display:block;grid-column:auto;width:100%;margin-top:22px}
+@media(max-width:1150px){
+ .accom-editor-content-grid{grid-template-columns:minmax(0,1fr) minmax(250px,315px);gap:12px}
+}
+@media(max-width:980px){
+ .accom-editor-content-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+ .accom-editor-form .accom-editor-content-grid .accom-editor-preview{grid-column:1;grid-row:auto;position:relative;top:auto}
+}
+@media(max-width:650px){
+ .accom-editor-content-grid{display:grid;grid-template-columns:minmax(0,1fr)}
+ .accom-editor-form .accom-editor-seo-section{margin-top:14px}
+}
