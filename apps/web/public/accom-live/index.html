@@ -867,6 +867,7 @@ h3{font-size:24px}
 @media (prefers-reduced-motion:reduce){#about .story-room-option,#tours .photo-category-grid button img{transition:none}#about .story-room-option:hover,#tours .photo-category-grid button:hover img{transform:none}}
 
 </style>
+<meta name="robots" content="noindex,nofollow"/>
 </head>
 <body>
 <a class="skip-link" href="#overview">Skip to listing details</a>
@@ -1219,5 +1220,15 @@ document.addEventListener('keydown',event=>{if(!dialog)return;if(event.key==='Es
  }});
 
 </script>
+<script>
+/* Dashboard-only navigation: preserve the deployed page's design and behavior. */
+window.addEventListener('message',function(event){
+  var msg=event.data;
+  if(!msg||msg.type!=='accom-open-section')return;
+  var allowed=['top','overview','about','tours','amenities','rooms','rules','payments','floorplan','neighbourhood','faqs','location','reviews'];
+  if(!allowed.includes(msg.id))return;
+  var section=document.getElementById(msg.id);
+  if(section)section.scrollIntoView({block:'start',behavior:'instant'});
+});
+</script>
 </body></html>
-<script async src="/.netlify/scripts/hud?variant=public" data-nf-variant="public" data-netlify-site-id="03118fd9-178d-4383-87c6-0fb8669359e9" data-app-host="app.netlify.com" data-account-tier="free"></script>
