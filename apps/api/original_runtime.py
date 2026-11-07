@@ -7,6 +7,7 @@ the original DOM; we do not recreate a lookalike page.
 from pathlib import Path
 from bs4 import BeautifulSoup
 from urllib.parse import quote
+from page_content import apply_overrides
 import json
 import re
 
@@ -324,6 +325,10 @@ def render_property(p, payload, public_site_url, preview=False):
                                              "alt": _text(item.get("alt")) or "Floor plan", "loading": "lazy"})
             box.append(img)
         soup.select_one("#floorplan").append(box)
+
+    # Finally apply text, link, alt and image fields against the approved DOM.
+    # This never replaces markup or modifies the source master template.
+    apply_overrides(soup, getattr(p, 'content_overrides', {}))
 
     # These inline styles extend only absent-content/repeater states.
     style = soup.new_tag("style")
