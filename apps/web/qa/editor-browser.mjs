@@ -10,6 +10,11 @@ const errors = [];
 page.on('pageerror', err => errors.push(err.message));
 
 try {
+  const guest = await browser.newPage();
+  await guest.goto(base+'/admin',{waitUntil:'domcontentloaded'});
+  await guest.waitForURL('**/login',{timeout:15000});
+  assert(await guest.getByText('Good to have you back.').isVisible(),'Admin must go straight to login');
+  await guest.close();
   await page.goto(base+'/login',{waitUntil:'domcontentloaded'});
   await page.getByLabel('Email or username').fill('Admin');
   await page.locator('.auth-form input[type=password]').fill('Admin@123');
@@ -17,6 +22,21 @@ try {
   await page.waitForURL('**/admin',{timeout:30000});
 
   await page.getByRole('tab',{name:'Add Page'}).click();
+  await page.getByRole('button',{name:'Preview actual design'}).click();
+  const fullSource = page.frameLocator('iframe[title="Complete original Accom property page"]');
+  for(const id of ['overview','about','tours','amenities','rooms','rules','payments','floorplan','neighbourhood','faqs','location','reviews']){
+    await fullSource.locator('#'+id).waitFor({state:'attached',timeout:20000});
+  }
+  assert.equal(await fullSource.locator('.gallery-tile').count(),5,'Live source main gallery should contain five tiles');
+  await page.screenshot({path:'qa/evidence/exact-original-source-in-category.png'});
+  await fullSource.locator('.gallery-tile').first().click();
+  await fullSource.locator('#galleryDialog').waitFor({state:'visible',timeout:10000});
+  await fullSource.locator('#galleryDialog [aria-label="Close photo tour"]').click();
+  await fullSource.locator('#galleryDialog').waitFor({state:'hidden',timeout:10000});
+  await fullSource.locator('[data-enquire]').first().click();
+  await fullSource.locator('#enquiryDialog').waitFor({state:'visible',timeout:10000});
+  await fullSource.locator('#enquiryDialog .modal-close').click();
+  await page.getByRole('button',{name:/Back to Category/}).click();
   const name = page.getByRole('textbox',{name:'Page name'});
   await name.waitFor();
   const width = await name.evaluate(el=>el.getBoundingClientRect().width);
@@ -32,6 +52,9 @@ try {
   assert(side.x+side.width <= middle.x+3,'Sections overlap content');
   assert(middle.x+middle.width <= preview.x+3,'Content overlaps preview');
   assert(preview.width>=300,'Preview is too narrow for desktop');
+  const sourceFrame = page.frameLocator('iframe[title="Complete original Accom source page"]');
+  await sourceFrame.locator('#payments').waitFor({state:'attached',timeout:20000});
+  await page.getByRole('button',{name:'Draft content'}).click();
   const iframe = page.locator('iframe[title="Live property page visual preview"]');
   await iframe.waitFor({timeout:20000});
   await page.waitForFunction(()=>{
@@ -82,7 +105,7 @@ try {
   const saved=page.getByText('Visual QA Updated Residence').first();
   await saved.waitFor({timeout:15000});
   assert.deepEqual(errors,[],'Unexpected uncaught page exceptions');
-  console.log('PASS: admin login, Add Page form width, 3-pane editor, unsaved live preview, image repeater, highlight, mobile overflow, draft save');
+  console.log('PASS: signed-out admin redirects directly to login; full 13-section live source gallery/enquiry; exact original in editor; draft preview; repeaters; mobile; save');
 } finally {
   await browser.close();
 }

@@ -1,0 +1,29 @@
+{
+  "source": "https://admirable-kitsune-933239.netlify.app",
+  "captured": "2026-11-07T06:47:21.869Z",
+  "count": 1,
+  "totalBytes": 838759,
+  "sections": [
+    "<section aria-label=\"Property images\" class=\"gallery\">",
+    "<section class=\"section section-overview\" id=\"overview\">",
+    "<section class=\"section property-story-section\" id=\"about\" aria-labelledby=\"property-story-heading\">",
+    "<section class=\"section tours-editorial-section\" id=\"tours\">",
+    "<section class=\"section\" id=\"amenities\">",
+    "<section class=\"section section-rooms\" id=\"rooms\">",
+    "<section class=\"section\" id=\"rules\">",
+    "<section class=\"section\" id=\"payments\">",
+    "<section class=\"section\" id=\"floorplan\">",
+    "<section class=\"section\" id=\"neighbourhood\">",
+    "<section class=\"section\" id=\"faqs\">",
+    "<section class=\"section\" id=\"location\">",
+    "<section class=\"section\" id=\"reviews\">"
+  ],
+  "files": [
+    {
+      "path": "/index.html",
+      "bytes": 838759,
+      "sha256": "ff3c6bf4694990d6e1e5da0d65ccbfb8851ed0e7706fc710b1f4a0836a201a09",
+      "type": "text/html; charset=UTF-8"
+    }
+  ]
+}
