@@ -53,23 +53,30 @@ try {
   await page.getByRole('button',{name:'Create page'}).click();
   const editor = page.locator('.accom-page-editor');
   await editor.waitFor({state:'visible',timeout:20000});
+  const appSidebar=await page.locator('.accom-editor-site-sidebar').boundingBox();
   const side = await page.locator('.accom-editor-sidebar').boundingBox();
   const middle = await page.locator('.accom-editor-fields').boundingBox();
   const preview = await page.locator('.accom-editor-preview').boundingBox();
-  assert(side&&middle&&preview, 'Three editor panels were not rendered');
+  assert(appSidebar&&side&&middle&&preview, 'Workspace shell and three panels must render');
+  assert(appSidebar.width>=195&&side.x>=appSidebar.x+appSidebar.width,'Editor must keep the Workspace-style sidebar visible');
   assert(side.x+side.width <= middle.x+3,'Sections overlap content');
   assert(middle.x+middle.width <= preview.x+3,'Content overlaps preview');
   assert(preview.width>=300,'Preview is too narrow for desktop');
-  const sourceFrame = page.frameLocator('iframe[title="Complete original Accom source page"]');
-  await sourceFrame.locator('#payments').waitFor({state:'attached',timeout:20000});
-  await page.getByRole('button',{name:'Draft content'}).click();
+  assert(preview.height>=440,'Preview must be tall enough to inspect page details');
+  assert(await page.locator('.accom-editor-topbar').isVisible(),'Breadcrumb top bar should match Workspace dashboard');
+  assert(await page.locator('.accom-editor-head-actions .primary').isVisible(),'Save draft should appear in the page header');
   const iframe = page.locator('iframe[title="Live property page visual preview"]');
+  await page.screenshot({path:'qa/evidence/editor-we-layout.png'});
   await iframe.waitFor({timeout:20000});
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
     return frame?.contentDocument?.querySelector('#property-title')?.textContent==='Visual QA Residence';
   },null,{timeout:20000});
 
+  await page.locator('.accom-editor-preview-controls').getByRole('button',{name:'Original',exact:true}).click();
+  const sourceFrame=page.frameLocator('iframe[title="Complete original Accom source page"]');
+  await sourceFrame.locator('#payments').waitFor({state:'attached',timeout:20000});
+  await page.locator('.accom-editor-preview-controls').getByRole('button',{name:'Draft',exact:true}).click();
   await page.getByRole('textbox',{name:'Property name'}).fill('Visual QA Updated Residence');
   await page.getByRole('textbox',{name:'City',exact:true}).fill('Birmingham');
   await page.getByRole('textbox',{name:'Address',exact:true}).fill('10 Example Road');
@@ -81,7 +88,7 @@ try {
     return iframe?.contentDocument?.querySelector('#property-title')?.textContent==='Visual QA Updated Residence';
   },null,{timeout:20000});
 
-  await page.getByRole('button',{name:/02 Property photos/}).click();
+  await page.getByRole('button',{name:/Property photos/}).click();
   await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).click();
   await page.getByPlaceholder('https://example.com/photo.webp or upload below').fill('/accom-template/assets/ensuite.webp');
   await page.getByPlaceholder('Describe the actual image').fill('Illustrative accommodation interior');
@@ -92,7 +99,7 @@ try {
   },null,{timeout:20000});
   await page.screenshot({path:'qa/evidence/editor-desktop.png'});
 
-  await page.getByRole('button',{name:/03 Highlights & amenities/}).click();
+  await page.getByRole('button',{name:/Highlights & amenities/}).click();
   await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).first().click();
   await page.getByRole('textbox',{name:'Highlight text'}).fill('Premium student support');
   await page.waitForFunction(()=>{
@@ -102,13 +109,13 @@ try {
 
   await page.setViewportSize({width:390,height:844});
   await page.waitForFunction(()=>document.querySelector('.accom-editor-device-toggle button:last-child')?.getAttribute('aria-pressed')==='true',{timeout:10000});
-  await page.getByRole('button',{name:/02 Property photos/}).click();
+  await page.getByRole('button',{name:/Property photos/}).click();
   await page.locator('.accom-editor-preview').scrollIntoViewIfNeeded();
   await page.screenshot({path:'qa/evidence/editor-mobile.png'});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
   assert(overflow<=3,'Mobile layout has '+overflow+'px horizontal overflow');
   await page.setViewportSize({width:1440,height:900});
-  await page.locator('.accom-editor-footer-actions .primary').click();
+  await page.locator('.accom-editor-head-actions .primary').click();
   await editor.waitFor({state:'hidden',timeout:20000});
   const saved=page.getByText('Visual QA Updated Residence').first();
   await saved.waitFor({timeout:15000});
@@ -125,7 +132,7 @@ try {
   assert(await inspection.getByText('Build/export required for visual editing.').isVisible(),'Dynamic component cannot be represented as pixel-perfect HTML without build');
   await page.screenshot({path:'qa/evidence/category-source-inspection.png'});
   assert.deepEqual(errors,[],'Unexpected uncaught page exceptions');
-  console.log('PASS: minimal category tabs and table, demo data hidden, original scaled Add Page preview, full 13-section source gallery/enquiry, editor/draft save/mobile, TSX project source extraction');
+  console.log('PASS: WE-style global sidebar, breadcrumbs, compact three-panel Accom editor, live draft-first preview, original toggle, draft saving, mobile, project inspection');
 } finally {
   await browser.close();
 }
