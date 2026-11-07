@@ -30,7 +30,7 @@ try {
   assert.equal(await fullSource.locator('.gallery-tile').count(),5,'Live source main gallery should contain five tiles');
   await fullSource.locator('.gallery-tile').first().click();
   await fullSource.locator('#galleryDialog').waitFor({state:'visible',timeout:10000});
-  await fullSource.locator('#galleryDialog .modal-close').click();
+  await fullSource.locator('#galleryDialog [aria-label="Close photo tour"]').click();
   await fullSource.locator('#galleryDialog').waitFor({state:'hidden',timeout:10000});
   await fullSource.locator('[data-enquire]').first().click();
   await fullSource.locator('#enquiryDialog').waitFor({state:'visible',timeout:10000});
