@@ -588,6 +588,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
    {error&&<p className="error accom-editor-inline-error" role="alert">{error}</p>}
    <form id="accom-property-edit-form" onSubmit={submit} className="drawer-form accom-editor-form">
     <div className="accom-editor-workspace">
+     <div className="accom-editor-content-grid">
      <div className="accom-stacked-sections" aria-label="Page content sections">
        <div className="accom-editor-list-intro">
          <span className="accom-section-eyebrow">01 / PAGE CONTENT</span>
@@ -713,6 +714,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
       </div>
       <div className="accom-editor-preview-foot"><span>{sourceReference?'Original template · select Draft to see edits.':previewLoading?'Updating preview…':previewError||'Preview only · Changes are not published'}</span></div>
      </section>
+     </div>
      <section className="accom-editor-seo-section" id="accom-seo-settings" aria-label="SEO Settings">
       <div className="accom-seo-section-intro">
        <span className="accom-section-eyebrow">02 / SEARCH</span>
