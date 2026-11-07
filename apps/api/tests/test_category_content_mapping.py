@@ -18,6 +18,18 @@ def test_thirteen_sections_prefilled_and_editable_without_touching_master(client
     assert all(part["fields"] for part in result["sections"]), [
         (part["id"], len(part["fields"])) for part in result["sections"]
     ]
+    # No incidental navigation, logo, breadcrumb or gallery UI labels are editable.
+    all_fields = [field for part in result["sections"] for field in part["fields"]]
+    assert all("group" in field and field["label"] for field in all_fields)
+    assert len(all_fields) < 75, "The editor must not dump arbitrary DOM text nodes"
+    assert not any("logo" in f["label"].lower() or "link destination" in f["label"].lower()
+                   for f in all_fields)
+    assert all(f["key"] in __import__("page_content").FIELD_BY_KEY for f in all_fields)
+    assert all(f["key"].startswith(("about.","neighbourhood.","location."))
+               for f in all_fields if f["kind"] == "cta_link")
+    assert not any(f["kind"] == "cta_link" for f in result["sections"][0]["fields"])
+    payment = next(part for part in result["sections"] if part["id"] == "payments")
+    assert sum(f["key"].startswith("payments.card_") for f in payment["fields"]) == 8
     about = next(part for part in result["sections"] if part["id"] == "about")
     heading = next(field for field in about["fields"] if field["kind"] == "text"
                    and "Living at" in field["value"])
@@ -51,7 +63,7 @@ def test_page_copy_rejects_script_urls_and_html_is_escaped(client):
     url = f"/api/admin/properties/{p['id']}"
     fields = [field for part in client.get(url + "/content-map", headers=auth).json()["sections"]
               for field in part["fields"]]
-    link = next(field for field in fields if field["kind"] == "href")
+    link = next(field for field in fields if field["kind"] == "cta_link")
     invalid = client.patch(url, headers=auth,
                            json={**p, "content_overrides": {link["key"]: "javascript:alert(1)"}})
     assert invalid.status_code == 422
