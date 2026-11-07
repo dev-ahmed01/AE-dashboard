@@ -4,6 +4,7 @@ This first implementation intentionally excludes rent collection and booking con
 """
 import os
 import re
+from urllib.parse import urlsplit
 import json
 import hashlib
 import io
@@ -444,8 +445,16 @@ class PropertyInput(BaseModel):
     @field_validator('canonical_override')
     @classmethod
     def validate_canonical_override(cls, value):
-        if value and (not value.startswith('https://') or not value[8:] or any(char.isspace() or char in ('<','>','\"',chr(39)) for char in value)):
-            raise ValueError('Canonical override must be an absolute HTTPS URL')
+        if not value:
+            return value
+        try:
+            parsed = urlsplit(value)
+        except ValueError as exc:
+            raise ValueError('Canonical override must be an absolute HTTPS URL') from exc
+        if (parsed.scheme != 'https' or not parsed.hostname or
+            parsed.username or parsed.password or parsed.fragment or
+            any(char.isspace() or char in ('<', '>', '"', chr(39)) for char in value)):
+            raise ValueError('Canonical override must be an absolute HTTPS URL without a fragment')
         return value
 
     @field_validator('content_overrides')
