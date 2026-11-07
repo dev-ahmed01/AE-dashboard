@@ -62,3 +62,21 @@ def test_page_copy_rejects_script_urls_and_html_is_escaped(client):
     assert preview.status_code == 200
     assert "<script>alert(1)</script>" not in preview.text
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in preview.text
+
+
+
+def test_highlight_description_repeater_is_preloaded_in_original_card(client):
+    auth = sign_in(client)
+    p = draft(client, auth, name="Card Description Residence")
+    url = f"/api/admin/properties/{p['id']}"
+    preview = client.post(url + "/preview-draft", headers=auth, json={
+        "highlights": ["Quiet individual rooms", "Close to campus"],
+        "highlight_descriptions": ["Focus-ready space in every room", "Walkable university neighbourhood"],
+    })
+    assert preview.status_code == 200, preview.text
+    html = BeautifulSoup(preview.text, "html.parser")
+    cards = html.select("#overview .overview-facts > div")
+    assert len(cards) >= 2
+    assert cards[0].select_one("strong").get_text(strip=True) == "Quiet individual rooms"
+    assert cards[0].select_one("p").get_text(strip=True) == "Focus-ready space in every room"
+    assert cards[1].select_one("p").get_text(strip=True) == "Walkable university neighbourhood"
