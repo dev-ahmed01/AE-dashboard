@@ -338,6 +338,16 @@ function EditorialEditor({page,templates,close,onSaved}:{page:Editorial;template
  return <div className="drawer-shade"><div className="drawer"><div className="drawer-header"><div><span className="eyebrow">EDITORIAL PAGE</span><h2>{page.title}</h2></div><button onClick={close} aria-label="Close editor"><X/></button></div><form onSubmit={save} className="drawer-form"><label>Title<input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></label>{template?.sections.map(section=><details open key={section.id} className="category-map-section"><summary>{section.name}</summary>{template.fields.filter(f=>f.section_id===section.id&&f.mode==='page').map(f=><label key={f.key}>{f.label}<textarea rows={f.kind==='text'?2:1} value={form.values[f.key]??f.default} onChange={e=>update(f.key,e.target.value)}/></label>)}</details>)}<label>SEO title<input value={form.seo_title} onChange={e=>setForm(f=>({...f,seo_title:e.target.value}))}/></label><label>Meta description<textarea rows={2} value={form.meta_description} onChange={e=>setForm(f=>({...f,meta_description:e.target.value}))}/></label><label className="checkline"><input type="checkbox" checked={form.noindex} onChange={e=>setForm(f=>({...f,noindex:e.target.checked}))}/> Noindex</label>{error&&<p className="error">{error}</p>}<div className="drawer-footer"><button type="button" className="outline" onClick={close}>Cancel</button><button className="primary" disabled={busy}>Save page</button></div></form></div></div>
 }
 
+const MASTER_PREVIEW_SELECTOR:Record<string,string> = {
+ essentials:'#top',
+ gallery:'section.gallery',
+ highlights:'#amenities',
+ policies:'#rules',
+ landmarks:'#location',
+ offers:'#reviews',
+ seo:'#top',
+}
+
 function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>void;saved:()=>void}){
  const [form,setForm]=useState({...defaults,...(source||{}),gallery:(source?.gallery||[]).map((photo,i):Media=>({...photo,layout:photo.layout||(i===0?'large':'regular')}))})
  const [busy,setBusy]=useState(false),[error,setError]=useState('')
@@ -460,7 +470,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
   const frame=previewFrameRef.current
   if(!frame)return
   try{
-   const selector=({essentials:'#overview',gallery:'.gallery-grid',highlights:'#included',policies:'#policies',landmarks:'.overview-landmarks',offers:'.cta-quickfacts',seo:'body'} as Record<string,string>)[activeSection]
+   const selector=MASTER_PREVIEW_SELECTOR[activeSection]
    frame.contentDocument?.querySelector(selector)?.scrollIntoView({block:'start',behavior:'instant'})
   }catch{ /* A browser can restrict frame access; the preview still renders. */ }
  },[activeSection,previewHtml])
@@ -561,7 +571,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
        {sourceReference&&<div className="accom-original-section-picker"><label>Jump to section <select value={sourceSection} aria-label="Jump to page section" onChange={e=>jumpSource(e.target.value)}>{sourceSections.map(section=><option key={section.id} value={section.id}>{section.name}</option>)}</select></label></div>}
       <div className="accom-editor-preview-viewport" ref={previewContainerRef}>
        {(sourceReference||previewHtml)?<div className={'accom-editor-preview-paper '+(previewMode==='mobile'?'mobile':'desktop')} style={{width:previewWidth*previewScale,height:1550*previewScale}}>
-         <iframe key={sourceReference?'source':'draft'} ref={previewFrameRef} title={sourceReference?'Complete original Accom source page':'Live property page visual preview'} sandbox={sourceReference?'allow-scripts allow-popups':'allow-scripts allow-same-origin'} src={sourceReference?'/accom-live/index.html':undefined} srcDoc={sourceReference?undefined:previewHtml} className={sourceReference?'accom-source-frame':''} style={{width:previewWidth,height:1550,transform:'scale('+previewScale+')',transformOrigin:'top left'}} onLoad={e=>{if(sourceReference){e.currentTarget.contentWindow?.postMessage({type:'accom-open-section',id:sourceSection},'*');return}try{const target=({essentials:'#overview',gallery:'.gallery-grid',highlights:'#included',policies:'#policies',landmarks:'.overview-landmarks',offers:'.cta-quickfacts',seo:'body'} as Record<string,string>)[activeSection];e.currentTarget.contentDocument?.querySelector(target)?.scrollIntoView({block:'start',behavior:'instant'})}catch{}}}/>
+         <iframe key={sourceReference?'source':'draft'} ref={previewFrameRef} title={sourceReference?'Complete original Accom source page':'Live property page visual preview'} sandbox={sourceReference?'allow-scripts allow-popups':'allow-scripts allow-same-origin'} src={sourceReference?'/accom-live/index.html':undefined} srcDoc={sourceReference?undefined:previewHtml} className={sourceReference?'accom-source-frame':''} style={{width:previewWidth,height:1550,transform:'scale('+previewScale+')',transformOrigin:'top left'}} onLoad={e=>{if(sourceReference){e.currentTarget.contentWindow?.postMessage({type:'accom-open-section',id:sourceSection},'*');return}try{const target=MASTER_PREVIEW_SELECTOR[activeSection];e.currentTarget.contentDocument?.querySelector(target)?.scrollIntoView({block:'start',behavior:'instant'})}catch{}}}/>
         </div>:<div className="accom-editor-preview-empty"><ImageIcon size={30}/><strong>{source?'Preparing draft preview':'Save a draft to preview its data'}</strong></div>}
       </div>
       <div className="accom-editor-preview-foot"><span>{sourceReference?'Original template · select Draft to see edits.':previewLoading?'Updating preview…':previewError||'Preview only · Changes are not published'}</span></div>
