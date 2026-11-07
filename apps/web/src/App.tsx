@@ -78,6 +78,8 @@ function Auth({go,setUser,registration=false}:{go:(s:string)=>void;setUser:(u:Us
  </form>{register&&<button type="button" className="text-link" onClick={()=>go('/login')}>Already have an account? Sign in</button>}</div></main>
 }
 function Student({go,user}:{go:(s:string)=>void;user:User|null}){const [data,setData]=useState<Overview|null>(null),[error,setError]=useState('');useEffect(()=>{if(user?.role==='student')api<Overview>('/api/me/overview').then(setData).catch(e=>setError(e.message))},[user]);if(!user)return <div className="wrap empty-state"><h2>Your student journey starts here.</h2><p>Sign in to save accommodation and track your enquiries.</p><button className="primary" onClick={()=>go('/login')}>Sign in or register</button></div>;if(user.role!=='student')return <div className="wrap empty-state"><h2>Student-only area</h2><button onClick={()=>go('/admin')} className="outline">Go to dashboard</button></div>;return <main className="wrap portal"><span className="eyebrow">YOUR PERSONAL SPACE</span><h1>Hello, {user.name.split(' ')[0]}.</h1><p>Everything about your accommodation search in one place.</p>{error&&<p className="error">{error}</p>}<div className="portal-stats"><div><strong>{data?.saved.length??'—'}</strong><span>Saved properties</span></div><div><strong>{data?.enquiries.length??'—'}</strong><span>Enquiries</span></div><div><strong>{data?.cashback.length??'—'}</strong><span>Cashback records</span></div></div><div className="portal-columns"><section className="panel"><div className="panel-header"><h2>My shortlist</h2><button onClick={()=>go('/')}>Explore stays <ArrowRight size={14}/></button></div>{data?.saved.length?data.saved.map(p=><button className="item-row" key={p.id} onClick={()=>go('/property/'+p.slug)}><Home size={18}/><span><strong>{p.name}</strong><small>{p.city}</small></span><ArrowRight size={16}/></button>):<p>No saved homes yet. Browse listings and tap the heart to build your shortlist.</p>}</section><section className="panel"><h2>Enquiry progress</h2>{data?.enquiries.length?data.enquiries.map(e=><div className="item-row" key={e.id}><Compass size={18}/><span><strong>{e.property}</strong><small>{e.assigned_consultant?'Consultant: '+e.assigned_consultant:'Consultant to be assigned'}</small></span><Badge>{e.status.replace('_',' ')}</Badge></div>):<p>Your enquiries will appear here once submitted. An enquiry is not a confirmed booking.</p>}</section><section className="panel"><h2>Cashback (if applicable)</h2>{data?.cashback.length?data.cashback.map(e=><div className="item-row" key={e.enquiry_id}><Wallet size={18}/><span><strong>{money(e.amount,e.currency,'week').split('/')[0]}</strong><small>Enquiry #{e.enquiry_id}</small></span><Badge>{e.status.replace('_',' ')}</Badge></div>):<p>No cashback eligibility or payout record has been confirmed for your enquiries.</p>}</section></div></main>}
+type ProjectPage={file:string;route:string;type:string;headings:string[];cta_labels:string[];image_references:string[];fields:{kind:string;tag?:string;value:string}[];renderable_html:boolean;requires_build:boolean}
+type ProjectInspection={filename:string;framework:string;pages:ProjectPage[];source_files:number;total_fields:number;renderable_pages:number;recommended_build_command:string;message:string}
 type AccomTemplate={id:number;name:string;approved:boolean;sections:{id:string;name:string;order:number}[];fields:{key:string;section_id:string;label:string;kind:string;tag?:string;default:string;mode:'page'|'static'}[]}
 type Editorial={id:number;kind:'editorial';template_id:number;title:string;slug:string;values:Record<string,string>;seo_title:string;meta_description:string;noindex:boolean;published:boolean;archived:boolean;edit_version:number}
 type CashbackRow={id:number;enquiry_id:number;amount:number|null;currency:string;status:string;notes:string}
@@ -89,7 +91,15 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
  const [editing,setEditing]=useState<Property|null>(null),[creating,setCreating]=useState(false),[roomParent,setRoomParent]=useState<Property|null>(null),[room,setRoom]=useState<Room|null>(null)
  const [editEditorial,setEditEditorial]=useState<Editorial|null>(null),[preview,setPreview]=useState<Property|null>(null),[previewHTML,setPreviewHTML]=useState('')
  const [templateName,setTemplateName]=useState(''),[file,setFile]=useState<File|null>(null),[selectedTemplate,setSelectedTemplate]=useState<AccomTemplate|null>(null),[mappingFields,setMappingFields]=useState<AccomTemplate['fields']>([])
+ const [inspection,setInspection]=useState<ProjectInspection|null>(null),[selectedSource,setSelectedSource]=useState('')
+ const [addTemplatePreview,setAddTemplatePreview]=useState('')
  const [pageTitle,setPageTitle]=useState(''),[pageTemplate,setPageTemplate]=useState('native-property')
+ useEffect(()=>{
+  if(pageTemplate==='native-property'){setAddTemplatePreview('');return}
+  let active=true
+  apiText('/api/admin/templates/'+pageTemplate+'/preview').then(html=>{if(active)setAddTemplatePreview(html)}).catch(()=>{if(active)setAddTemplatePreview('')})
+  return()=>{active=false}
+ },[pageTemplate])
  const [showOperations,setShowOperations]=useState(false)
  const [showApprovedDesign,setShowApprovedDesign]=useState(false)
  const [notice,setNotice]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false)
@@ -111,7 +121,7 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
  if(!user)return <main className="wrap empty-state"><h2>Staff sign-in required</h2><button className="primary" onClick={()=>go('/login')}>Sign in</button></main>
  if(user.role==='student')return <main className="wrap empty-state"><h2>Staff access only</h2><button onClick={()=>go('/student')} className="outline">My portal</button></main>
  const action=async(task:()=>Promise<unknown>,success:string)=>{setError('');setBusy(true);try{await task();await refresh();setNotice(success)}catch(e){report(e)}finally{setBusy(false)}}
- const filtered=[...properties.map(p=>({...p,kind:'property' as const,title:p.name})),...pages.map(p=>({...p,kind:'editorial' as const,name:p.title,city:'Editorial page',rooms:[] as Room[]}))]
+ const filtered=[...properties.filter(p=>!p.is_demo).map(p=>({...p,kind:'property' as const,title:p.name})),...pages.map(p=>({...p,kind:'editorial' as const,name:p.title,city:'Editorial page',rooms:[] as Room[]}))]
   .filter(p=>(p.title+' '+p.slug).toLowerCase().includes(search.toLowerCase()))
   .filter(p=>(filter==='All'&&!p.archived)||(filter==='Archived'&&p.archived)||(filter==='Published'&&p.published&&!p.archived)||(filter==='Draft'&&!p.published&&!p.archived))
  const startEdit=(p:Property)=>{setEditing(p);setCreating(false)}
@@ -130,7 +140,33 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
   },'Editorial draft created.')
  }
  const openTemplate=(t:AccomTemplate)=>{setSelectedTemplate(t);setMappingFields(t.fields.map(f=>({...f})));apiText('/api/admin/templates/'+t.id+'/preview').then(setPreviewHTML).catch(report)}
- const upload=async()=>{if(!file)return setError('Choose an HTML file first');setBusy(true);setError('');try{const body=new FormData();body.append('file',file);body.append('name',templateName||file.name.replace(/\.html$/,''));const t=await api<AccomTemplate>('/api/admin/templates',{method:'POST',body});await refresh();openTemplate(t);setNotice('Template imported. Review the section mapping before approval.')}catch(e){report(e)}finally{setBusy(false)}}
+ const upload=async()=>{
+  if(!file)return setError('Choose an HTML file, project ZIP or page component.')
+  setBusy(true);setError('');setInspection(null);setSelectedSource('')
+  try{
+   const body=new FormData();body.append('file',file)
+   if(/\\.html?$/i.test(file.name)){
+     body.append('name',templateName||file.name.replace(/\\.html?$/i,''))
+     const t=await api<AccomTemplate>('/api/admin/templates',{method:'POST',body})
+     await refresh();openTemplate(t)
+     setNotice('HTML imported. Review detected sections and fields before approval.')
+   }else{
+     const result=await api<ProjectInspection>('/api/admin/projects/inspect',{method:'POST',body})
+     setInspection(result)
+     setSelectedSource(result.pages.find(p=>p.renderable_html)?.file||result.pages[0]?.file||'')
+     setNotice('Project scanned safely. Review the discovered pages and choose a built HTML page to import.')
+   }
+  }catch(e){report(e)}finally{setBusy(false)}
+ }
+ const importSelectedSource=async()=>{
+  if(!file||!selectedSource)return
+  setBusy(true);setError('')
+  try{
+   const body=new FormData();body.append('file',file);body.append('source_path',selectedSource);body.append('name',templateName||selectedSource.split('/').pop()?.replace(/\\.html?$/i,'')||'Imported page')
+   const t=await api<AccomTemplate>('/api/admin/templates/import-project',{method:'POST',body})
+   await refresh();openTemplate(t);setInspection(null);setNotice('Built HTML page imported. Review content mapping before approval.')
+  }catch(e){report(e)}finally{setBusy(false)}
+ }
  const saveMapping=async()=>{if(!selectedTemplate)return;await action(async()=>{const t=await api<AccomTemplate>('/api/admin/templates/'+selectedTemplate.id,{method:'PATCH',body:JSON.stringify({fields:mappingFields,approved:true})});openTemplate(t)},'Template mapping approved')}
  const updateEnquiry=async(id:number,changes:Record<string,unknown>)=>{
   if(changes.status==='booked'){
