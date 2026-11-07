@@ -691,3 +691,11 @@
 }
 .category-source-preview-message strong{font-size:12px;color:#313640}
 .category-source-preview-message p{font-size:10px;color:#848992;max-width:330px;line-height:1.7;margin:0}
+
+/* The old Add Page max-width/padding must not constrain the new two-column workspace. */
+section.category-split-workspace.category-add-page{
+  width:100%;max-width:none;padding:0;gap:20px;
+}
+@media(max-width:1100px){
+ section.category-split-workspace.category-add-page{grid-template-columns:minmax(0,1fr)}
+}
