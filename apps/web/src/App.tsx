@@ -414,13 +414,13 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
   previewFrameRef.current?.contentWindow?.postMessage({type:'accom-open-section',id},'*')
  }
  const sections=[
-  {id:'essentials',title:'Property essentials',desc:'Identity, address and introduction',index:'01'},
-  {id:'gallery',title:'Property photos',desc:'Gallery layout and image sizing',index:'02'},
-  {id:'highlights',title:'Highlights & amenities',desc:'Key features and virtual tour',index:'03'},
-  {id:'policies',title:'Policies & FAQs',desc:'Resident information and answers',index:'04'},
-  {id:'landmarks',title:'Landmarks & floor plans',desc:'Nearby places and visual plans',index:'05'},
-  {id:'offers',title:'Offers & reviews',desc:'Promotions, trust and sources',index:'06'},
-  {id:'seo',title:'SEO & publishing',desc:'Metadata and index settings',index:'07'},
+  {id:'essentials',title:'Property essentials',desc:'Identity, address and introduction',index:'01',icon:LayoutDashboard},
+  {id:'gallery',title:'Property photos',desc:'Gallery layout and image sizing',index:'02',icon:ImageIcon},
+  {id:'highlights',title:'Highlights & amenities',desc:'Key features and virtual tour',index:'03',icon:Sparkles},
+  {id:'policies',title:'Policies & FAQs',desc:'Resident information and answers',index:'04',icon:ShieldCheck},
+  {id:'landmarks',title:'Landmarks & floor plans',desc:'Nearby places and visual plans',index:'05',icon:MapPin},
+  {id:'offers',title:'Offers & reviews',desc:'Promotions, trust and sources',index:'06',icon:Heart},
+  {id:'seo',title:'SEO & publishing',desc:'Metadata and index settings',index:'07',icon:Search},
  ]
  const currentSection=sections.find(item=>item.id===activeSection)||sections[0]
  const previewSignature=JSON.stringify(form)
@@ -507,7 +507,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
      <aside className="accom-editor-sidebar" aria-label="Page sections">
       <div className="accom-editor-pane-heading"><strong>Edit sections</strong><span>{sections.length} groups</span></div>
       <nav className="accom-editor-sections" aria-label="Choose editing section">
-       {sections.map(item=><button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>{setActiveSection(item.id);fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})}}><span className="accom-editor-section-index">{item.index}</span><span>{item.title}</span><ChevronRight size={15}/></button>)}
+       {sections.map(item=>{const Icon=item.icon;return <button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>{setActiveSection(item.id);fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})}}><Icon size={15}/><span>{item.title}</span><span className="accom-editor-section-index">{item.index}</span></button>})}
       </nav>
       <div className="accom-editor-side-note">Fields follow the approved property layout. <button type="button" onClick={()=>{setSourceReference(true);setSourceSection('top')}}>View original design</button></div>
      </aside>
