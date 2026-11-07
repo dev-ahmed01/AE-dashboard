@@ -165,6 +165,14 @@ try {
   const staticPanel=page.locator('.accom-right-static');
   assert.equal(await staticPanel.locator('.accom-static-row').count(),15,'Static tab shows all page sections');
   await staticPanel.getByRole('checkbox',{name:'Static Payments & fees'}).check();
+  const staticRow=staticPanel.locator('.accom-static-row').filter({has:staticPanel.getByRole('checkbox',{name:'Static Payments & fees'})});
+  const staticRowLayout=await staticRow.evaluate(el=>{
+    const label=el.querySelector('span:first-child').getBoundingClientRect();
+    const track=el.querySelector('.accom-static-switch').getBoundingClientRect();
+    return {labelRight:label.right,trackLeft:track.left,labelTop:label.top,trackTop:track.top,trackBottom:track.bottom,labelBottom:label.bottom};
+  });
+  assert(staticRowLayout.trackLeft>=staticRowLayout.labelRight-4,
+    'Static switches should align to the right of row text: '+JSON.stringify(staticRowLayout));
   await page.getByRole('button',{name:/Payments & fees/}).click();
   assert((await page.locator('#accom-section-payments fieldset').getAttribute('disabled'))!==null,'Static sections must apply the native disabled fieldset attribute');
   assert(await page.locator('#accom-section-payments fieldset button').first().isDisabled(),'Locked section action buttons must be disabled');
