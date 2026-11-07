@@ -90,6 +90,7 @@ class Property(Base):
     description: Mapped[str] = mapped_column(Text, default='')
     content_overrides: Mapped[dict] = mapped_column(JSON, default=dict)
     highlights: Mapped[list] = mapped_column(JSON, default=list)
+    highlight_descriptions: Mapped[list] = mapped_column(JSON, default=list)
     amenities: Mapped[list] = mapped_column(JSON, default=list)
     policies: Mapped[list] = mapped_column(JSON, default=list)
     faq: Mapped[list] = mapped_column(JSON, default=list)
@@ -359,7 +360,7 @@ def prop_json(p, detail=False, staff=False):
     rooms=[room_json(r) for r in p.rooms if staff or (r.active and r.availability!='unavailable')]
     price,currency,period,note=_headline_rate(p)
     d={'id':p.id,'name':p.name,'slug':p.slug,'city':p.city,'country':p.country,'address':p.address,'postcode':p.postcode,'university':p.university,'description':p.description,'gallery':p.gallery,'published':p.published,'archived':p.archived,'is_demo':p.is_demo,'edit_version':p.edit_version,'verified_at':p.verified_at.isoformat() if p.verified_at else None,'from_price':price,'price_note':note,'currency':currency,'price_period':period}
-    if detail:d.update({'highlights':p.highlights,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'content_overrides':p.content_overrides or {},'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'rooms':rooms})
+    if detail:d.update({'highlights':p.highlights,'highlight_descriptions':p.highlight_descriptions,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'content_overrides':p.content_overrides or {},'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'rooms':rooms})
     return d
 
 def slugify(t):
@@ -415,6 +416,7 @@ class PropertyInput(BaseModel):
     description: str = ''
     content_overrides: dict[str,str] = Field(default_factory=dict)
     highlights: list[str] = Field(default_factory=list)
+    highlight_descriptions: list[str] = Field(default_factory=list)
     amenities: list[str] = Field(default_factory=list)
     policies: list[PairInput] = Field(default_factory=list)
     faq: list[PairInput] = Field(default_factory=list)
