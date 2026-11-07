@@ -91,6 +91,7 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
  const [templateName,setTemplateName]=useState(''),[file,setFile]=useState<File|null>(null),[selectedTemplate,setSelectedTemplate]=useState<AccomTemplate|null>(null),[mappingFields,setMappingFields]=useState<AccomTemplate['fields']>([])
  const [pageTitle,setPageTitle]=useState(''),[pageTemplate,setPageTemplate]=useState('native-property')
  const [showOperations,setShowOperations]=useState(false)
+ const [showApprovedDesign,setShowApprovedDesign]=useState(false)
  const [notice,setNotice]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false)
  const [selectedEnquiry,setSelectedEnquiry]=useState<number|null>(null),[notes,setNotes]=useState<{id:number;message:string;by:string;created_at:string}[]>([]),[noteText,setNoteText]=useState('')
  const [staffName,setStaffName]=useState(''),[staffEmail,setStaffEmail]=useState(''),[staffUsername,setStaffUsername]=useState(''),[staffPassword,setStaffPassword]=useState('')
@@ -150,7 +151,7 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
   {error&&<div className="error admin-message" role="alert">{error}<button onClick={()=>setError('')} aria-label="Dismiss error">×</button></div>}
   {notice&&<div className="notice admin-message" role="status">{notice}<button onClick={()=>setNotice('')} aria-label="Dismiss message">×</button></div>}
   {tab==='All Pages'&&<>
-    <div className="category-list-header"><div><h2>All Pages</h2><p>Find, review and update pages in your directory.</p></div><span className="category-result-count">{filtered.length} {filtered.length===1?'page':'pages'}</span></div>
+    <div className="category-list-header"><div><h2>All Pages</h2><p>Find, review and update pages in your directory.</p></div><div className="accom-reference-actions"><button type="button" className="outline" onClick={()=>setShowApprovedDesign(true)}>View complete approved design <ArrowRight size={15}/></button><span className="category-result-count">{filtered.length} {filtered.length===1?'page':'pages'}</span></div></div>
     <div className="category-list-toolbar" role="search">
      <div className="category-search"><Search size={17}/><input aria-label="Search pages" type="search" placeholder="Search by page name or URL…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
      <div className="category-filters" role="group" aria-label="Page publishing status">{(['All','Published','Draft'] as const).map(t=><button key={t} type="button" aria-pressed={filter===t} className={filter===t?'selected':''} onClick={()=>setFilter(t)}>{t}</button>)}</div>
@@ -166,11 +167,13 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
       <option value="native-property">Accom Property Detail · Approved design</option>
       {templates.filter(t=>t.approved).map(t=><option key={t.id} value={t.id}>{t.name} · {t.sections.length} sections</option>)}
     </select></label>
+    {pageTemplate==='native-property'&&<div className="accom-template-reference-note"><div><strong>Approved Accom property page</strong><small>Original Netlify design · 13 complete sections, with its galleries, room comparison, bills calculator, policies, FAQs and enquiry demonstration</small></div><button type="button" className="outline" onClick={()=>setShowApprovedDesign(true)}>Preview actual design <ArrowRight size={15}/></button></div>}
     <div className="category-create-foot"><p>{pageTemplate==='native-property'?'Creates a property draft. Add location, rooms and photos in the next screen.':'Creates a draft from the approved HTML template.'}</p><button type="submit" className="primary" disabled={busy}>Create page <ArrowRight size={16}/></button></div>
    </form>
   </section>}
   {tab==='Upload Template'&&<section className="category-template-workspace">
    <div className="category-upload-intro"><span className="eyebrow">TEMPLATE MANAGER</span><h2>Upload Template</h2><p>Upload HTML, inspect every section and field, then approve the areas editors may change.</p></div>
+   <div className="accom-native-template-card"><div><span className="eyebrow">BUNDLED APPROVED TEMPLATE</span><h3>Accom Property Detail · Original Netlify version</h3><p>Complete original page with all 13 sections and interactive behavior. This is the master reference for accommodation page integration, not a flattened HTML extraction.</p></div><button type="button" className="outline" onClick={()=>setShowApprovedDesign(true)}>View complete design <ArrowRight size={15}/></button></div>
    <div className="category-upload-card">
     <label className="category-upload"><strong>Choose HTML file</strong><input type="file" accept=".html,text/html" onChange={e=>setFile(e.target.files?.[0]||null)}/><span>{file?.name||'UTF-8 .html · up to 1.5 MB'}</span></label>
     <label>Template name<input value={templateName} onChange={e=>setTemplateName(e.target.value)} placeholder="e.g. City landing page"/></label>
@@ -209,6 +212,7 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
    </div>}
   {(editing||creating)&&<PropertyEditor source={editing} close={()=>{setEditing(null);setCreating(false)}} saved={()=>{refresh();setEditing(null);setCreating(false);setTab('All Pages');setNotice('Property saved as draft')}}/>}
   {roomParent&&<RoomManager p={roomParent} close={()=>setRoomParent(null)} saved={()=>{refresh();setRoomParent(null);setNotice('Room changes saved')}} current={room} setCurrent={setRoom}/>}
+  {showApprovedDesign&&<div className="category-preview-overlay accom-original-source-modal" role="dialog" aria-modal="true" aria-label="Approved Accom source design"><div className="category-preview-bar"><div><strong>Approved Accom property design</strong><small>Exact deployed page · 13 sections · interactive reference · no real enquiries are submitted</small></div><button type="button" className="outline tiny" onClick={()=>setShowApprovedDesign(false)}>Back to Category <X size={15}/></button></div><iframe className="accom-original-page-frame" title="Complete original Accom property page" src="/accom-live/index.html" sandbox="allow-scripts allow-popups"/></div>}
   {preview&&<div className="category-preview-overlay"><div className="category-preview-bar"><strong>Preview · {preview.name} {preview.published?'':'(Draft)'}</strong><button className="outline tiny" onClick={()=>setPreview(null)}>Close preview <X size={15}/></button></div><div className="category-preview-scroll"><Listing slug={preview.slug} go={go} user={user} previewData={preview}/></div></div>}
   {previewHTML&&!selectedTemplate&&<div className="category-preview-overlay"><div className="category-preview-bar"><strong>Editorial page preview</strong><button className="outline tiny" onClick={()=>setPreviewHTML('')}>Close <X size={15}/></button></div><iframe title="Editorial page preview" sandbox="" className="category-preview-full" srcDoc={previewHTML}/></div>}
   {editEditorial&&<EditorialEditor page={editEditorial} templates={templates} close={()=>setEditEditorial(null)} onSaved={async()=>{await refresh();setEditEditorial(null);setNotice('Page saved')}}/>}
