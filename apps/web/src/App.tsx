@@ -346,16 +346,17 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
  const [previewLoading,setPreviewLoading]=useState(false)
  const [previewError,setPreviewError]=useState('')
  const [previewMode,setPreviewMode]=useState<'desktop'|'mobile'>('desktop')
- const [sourceReference,setSourceReference]=useState(true)
+ const [sourceReference,setSourceReference]=useState(false)
  const [sourceSection,setSourceSection]=useState('top')
  const [previewScale,setPreviewScale]=useState(.4)
  const previewContainerRef=useRef<HTMLDivElement|null>(null)
  const previewFrameRef=useRef<HTMLIFrameElement|null>(null)
  const fieldsPanelRef=useRef<HTMLElement|null>(null)
  const original=JSON.stringify({...defaults,...(source||{})})
+ const [saveNotice,setSaveNotice]=useState('')
  const dirty=JSON.stringify({...defaults,...(source||{}),...form})!==original
  const safeClose=()=>{if(!dirty||window.confirm('Discard your unsaved changes?'))close()}
- function set<K extends keyof typeof defaults>(key:K,value:(typeof defaults)[K]){setForm(f=>({...f,[key]:value}))}
+ function set<K extends keyof typeof defaults>(key:K,value:(typeof defaults)[K]){setForm(f=>({...f,[key]:value}));setSaveNotice('')}
  const media=(item:Media,change:(v:Media)=>void,group:string)=> <div className="repeater-photo-fields">
    <label>Image URL<input placeholder="https://example.com/photo.webp or upload below" value={item.url} onChange={e=>change({...item,url:e.target.value})}/></label><label>Or upload a photo (JPG, PNG, WebP)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;try{const url=await uploadPhoto(f);change({...item,url})}catch(err){setError((err as Error).message)}}}/></label>
    <label>Alt text<input placeholder="Describe the actual image" value={item.alt||''} onChange={e=>change({...item,alt:e.target.value})}/></label>
@@ -373,7 +374,7 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
    setError('Complete the property name and city in Property essentials before saving.')
    return
   }
-  setBusy(true);setError('');
+  setBusy(true);setError('');setSaveNotice('');
   const trimmed=(s:string)=>s.trim()
   const data={...form,
    highlights:form.highlights.map(trimmed).filter(Boolean),amenities:form.amenities.map(trimmed).filter(Boolean),
@@ -476,27 +477,42 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
  const previewWidth=previewMode==='desktop'?1280:390
  
  return <div className="drawer-shade accom-editor-overlay" role="presentation">
-  <div className="drawer accom-page-editor" role="dialog" aria-modal="true" aria-label="Property page editor">
+  <div className="accom-editor-shell" role="region" aria-label="Accom Category page editor">
+   <aside className="category-sidebar accom-editor-site-sidebar" aria-label="Content manager navigation">
+    <div className="category-sidebar-brand"><Logo/><small>CONTENT MANAGER</small></div>
+    <nav aria-label="Category"><button className="category-sidebar-item active" type="button" onClick={safeClose}>Category</button></nav>
+    <div className="category-sidebar-spacer"/>
+    <div className="admin-side-bottom"><strong>Content workspace</strong><small>Page editor</small></div>
+    <button type="button" className="category-exit" onClick={safeClose}>All Pages <ArrowRight size={14}/></button>
+   </aside>
+   <div className="accom-editor-main">
+    <div className="accom-editor-topbar"><div>Category <ChevronRight size={13}/> <strong>Page Editor</strong></div><span><span className="accom-editor-local-dot"/> LOCAL WORKSPACE</span></div>
+    <div className="accom-editor-content">
+    <div className="drawer accom-page-editor">
    <header className="accom-editor-header">
     <div className="accom-editor-title">
-     <button type="button" className="accom-editor-back" onClick={safeClose}><ChevronLeft size={17}/> All Pages</button>
-     <span className="eyebrow">CATEGORY / ACCOMMODATION PAGE</span>
-     <h2>{form.name||'Untitled accommodation'}</h2>
-     <p>Choose a section, update its content and review the actual property design.</p>
+     <button type="button" className="accom-editor-back" onClick={safeClose}><ChevronLeft size={15}/> Back to pages</button>
+     <div className="accom-editor-title-line"><h1>{form.name||'Untitled accommodation'}</h1><span className="accom-editor-status">{source?.published?'Published':'Draft'}</span></div>
+     <p>Accommodation Page <span aria-hidden="true">·</span> /{form.slug||'new-page'}/</p>
     </div>
-    <div className="accom-editor-head-actions"><span className="accom-editor-status">{source?.published?'Published':'Draft'}</span><button type="button" className="outline" onClick={safeClose} aria-label="Close page editor"><X size={18}/></button></div>
+    <div className="accom-editor-head-actions">
+      <span className={'accom-editor-saving-state '+(dirty?'unsaved':'')}>{busy?'Saving…':dirty?'Unsaved changes':'Saved'}</span>
+      <button type="button" className="outline" onClick={openFullPreview} disabled={!sourceReference&&!previewHtml}> <ImageIcon size={15}/> Preview</button>
+      <button type="submit" form="accom-property-edit-form" className="primary" disabled={busy}><Check size={15}/>{busy?'Saving…':'Save draft'}</button>
+    </div>
    </header>
-   <form onSubmit={submit} className="drawer-form accom-editor-form">
+   {error&&<p className="error accom-editor-inline-error" role="alert">{error}</p>}
+   <form id="accom-property-edit-form" onSubmit={submit} className="drawer-form accom-editor-form">
     <div className="accom-editor-workspace">
      <aside className="accom-editor-sidebar" aria-label="Page sections">
-      <div className="accom-editor-pane-heading">EDIT SECTIONS <span>{sections.length} sections</span></div>
+      <div className="accom-editor-pane-heading"><strong>Edit sections</strong><span>{sections.length} groups</span></div>
       <nav className="accom-editor-sections" aria-label="Choose editing section">
        {sections.map(item=><button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>{setActiveSection(item.id);fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})}}><span className="accom-editor-section-index">{item.index}</span><span>{item.title}</span><ChevronRight size={15}/></button>)}
       </nav>
-      <div className="accom-editor-side-note"><strong>Deployed Accom master page</strong><small>Original reference contains 13 sections. Use the visual preview to inspect the complete design; editable fields are being mapped separately.</small></div>
+      <div className="accom-editor-side-note">Fields follow the approved property layout. <button type="button" onClick={()=>{setSourceReference(true);setSourceSection('top')}}>View original design</button></div>
      </aside>
      <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
-      <div className="accom-editor-fields-head"><span className="eyebrow">{currentSection.index} / PAGE CONTENT</span><h3>{currentSection.title}</h3><p>{currentSection.desc}. Edits are reflected in the preview.</p></div>
+      <div className="accom-editor-fields-head"><span className="eyebrow">SECTION {currentSection.index}</span><h3>{currentSection.title}</h3><p>{currentSection.desc}</p></div>
       <div className="accom-editor-fields-body">
        {activeSection==='essentials'&&<div className="accom-fields-group">
   <label>Property name<input required minLength={3} value={form.name} onChange={e=>set('name',e.target.value)}/></label><label className="checkline"><input type="checkbox" checked={!!form.is_demo} onChange={e=>set('is_demo',e.target.checked)}/> Demonstration content — cannot be published until verified</label>
@@ -531,26 +547,30 @@ function PropertyEditor({source,close,saved}:{source:Property|null;close:()=>voi
       </div>
      </main>
      <section className="accom-editor-preview" aria-label="Complete Accom property preview">
-      <div className="accom-editor-preview-head"><div><span className="eyebrow">PAGE PREVIEW</span><h3>{sourceReference?'Original deployed Accom design':'Current draft content'}</h3><small>{sourceReference?'Full original Netlify page · interactive · read-only':'Database-backed draft · unsaved field changes'}</small></div>
-       <div className="accom-editor-device-toggle" aria-label="Preview viewport"><button type="button" aria-pressed={previewMode==='desktop'} className={previewMode==='desktop'?'active':''} onClick={()=>setPreviewMode('desktop')}>Desktop</button><button type="button" aria-pressed={previewMode==='mobile'} className={previewMode==='mobile'?'active':''} onClick={()=>setPreviewMode('mobile')}>Mobile</button></div>
-      </div>
-      <div className="accom-source-preview-tools">
-       <div className="accom-preview-mode-switch" role="group" aria-label="Preview source"><button type="button" className={sourceReference?'active':''} aria-pressed={sourceReference} onClick={()=>setSourceReference(true)}>Exact original page</button><button type="button" className={!sourceReference?'active':''} aria-pressed={!sourceReference} onClick={()=>setSourceReference(false)}>Draft content</button></div>
-       {sourceReference&&<select value={sourceSection} aria-label="Jump to page section" onChange={e=>jumpSource(e.target.value)}>{sourceSections.map(section=><option key={section.id} value={section.id}>{section.name}</option>)}</select>}
-      </div>
+      <div className="accom-editor-preview-head">
+        <div className="accom-editor-preview-label"><h3>Live Preview</h3><small>{sourceReference?'Approved original page · read-only':'Actual property layout · updates as you type'}</small></div>
+        <div className="accom-editor-preview-controls">
+         <div className="accom-preview-mode-switch" role="group" aria-label="Preview source">
+          <button type="button" className={!sourceReference?'active':''} aria-pressed={!sourceReference} onClick={()=>setSourceReference(false)}>Draft</button>
+          <button type="button" className={sourceReference?'active':''} aria-pressed={sourceReference} onClick={()=>setSourceReference(true)}>Original</button>
+         </div>
+         <div className="accom-editor-device-toggle" aria-label="Preview viewport"><button type="button" aria-pressed={previewMode==='desktop'} className={previewMode==='desktop'?'active':''} onClick={()=>setPreviewMode('desktop')}>Desktop</button><button type="button" aria-pressed={previewMode==='mobile'} className={previewMode==='mobile'?'active':''} onClick={()=>setPreviewMode('mobile')}>Mobile</button></div>
+         <button type="button" className="accom-editor-expand-preview" onClick={openFullPreview} disabled={!sourceReference&&!previewHtml} aria-label="Expand full preview" title="Open full page"><ArrowRight size={15}/></button>
+        </div>
+       </div>
+       {sourceReference&&<div className="accom-original-section-picker"><label>Jump to section <select value={sourceSection} aria-label="Jump to page section" onChange={e=>jumpSource(e.target.value)}>{sourceSections.map(section=><option key={section.id} value={section.id}>{section.name}</option>)}</select></label></div>}
       <div className="accom-editor-preview-viewport" ref={previewContainerRef}>
-       {(sourceReference||previewHtml)?<div className={'accom-editor-preview-paper '+(previewMode==='mobile'?'mobile':'desktop')} style={{width:previewWidth*previewScale,height:1020*previewScale}}>
-         <iframe key={sourceReference?'source':'draft'} ref={previewFrameRef} title={sourceReference?'Complete original Accom source page':'Live property page visual preview'} sandbox={sourceReference?'allow-scripts allow-popups':'allow-scripts allow-same-origin'} src={sourceReference?'/accom-live/index.html':undefined} srcDoc={sourceReference?undefined:previewHtml} className={sourceReference?'accom-source-frame':''} style={{width:previewWidth,height:1020,transform:'scale('+previewScale+')',transformOrigin:'top left'}} onLoad={e=>{if(sourceReference){e.currentTarget.contentWindow?.postMessage({type:'accom-open-section',id:sourceSection},'*');return}try{const target=({essentials:'#overview',gallery:'.gallery-grid',highlights:'#included',policies:'#policies',landmarks:'.overview-landmarks',offers:'.cta-quickfacts',seo:'body'} as Record<string,string>)[activeSection];e.currentTarget.contentDocument?.querySelector(target)?.scrollIntoView({block:'start',behavior:'instant'})}catch{}}}/>
+       {(sourceReference||previewHtml)?<div className={'accom-editor-preview-paper '+(previewMode==='mobile'?'mobile':'desktop')} style={{width:previewWidth*previewScale,height:1550*previewScale}}>
+         <iframe key={sourceReference?'source':'draft'} ref={previewFrameRef} title={sourceReference?'Complete original Accom source page':'Live property page visual preview'} sandbox={sourceReference?'allow-scripts allow-popups':'allow-scripts allow-same-origin'} src={sourceReference?'/accom-live/index.html':undefined} srcDoc={sourceReference?undefined:previewHtml} className={sourceReference?'accom-source-frame':''} style={{width:previewWidth,height:1550,transform:'scale('+previewScale+')',transformOrigin:'top left'}} onLoad={e=>{if(sourceReference){e.currentTarget.contentWindow?.postMessage({type:'accom-open-section',id:sourceSection},'*');return}try{const target=({essentials:'#overview',gallery:'.gallery-grid',highlights:'#included',policies:'#policies',landmarks:'.overview-landmarks',offers:'.cta-quickfacts',seo:'body'} as Record<string,string>)[activeSection];e.currentTarget.contentDocument?.querySelector(target)?.scrollIntoView({block:'start',behavior:'instant'})}catch{}}}/>
         </div>:<div className="accom-editor-preview-empty"><ImageIcon size={30}/><strong>{source?'Preparing draft preview':'Save a draft to preview its data'}</strong></div>}
       </div>
-      <div className="accom-editor-preview-foot">{sourceReference?<span>Original design is read-only. Choose Draft content to see your edits.</span>:<>{previewError&&<span className="accom-editor-preview-error" role="alert">{previewError}</span>}{previewLoading&&<span>Updating preview…</span>}</>}<button type="button" className="outline" onClick={openFullPreview} disabled={!sourceReference&&!previewHtml}>Open full page <ArrowRight size={15}/></button></div>     </section>
+      <div className="accom-editor-preview-foot"><span>{sourceReference?'Original template · select Draft to see edits.':previewLoading?'Updating preview…':previewError||'Preview only · Changes are not published'}</span></div>
+     </section>
     </div>
-    <footer className="drawer-footer accom-editor-footer">
-     <div><strong>{dirty?'Unsaved changes':'All changes saved'}</strong><small>Editing affects only this page. Save to store your changes in Category.</small></div>
-     <div className="accom-editor-footer-actions"><button type="button" className="outline" onClick={safeClose}>Cancel</button><button type="button" className="outline" onClick={openFullPreview} disabled={!previewHtml}>Preview</button><button type="submit" className="primary" disabled={busy}>{busy?'Saving…':'Save draft'} <Check size={16}/></button></div>
-     {error&&<p className="error" role="alert">{error}</p>}
-    </footer>
    </form>
+  </div>
+  </div>
+  </div>
   </div>
  </div>
 }
