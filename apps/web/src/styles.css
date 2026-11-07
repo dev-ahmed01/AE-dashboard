@@ -680,3 +680,14 @@
  .category-project-content{grid-template-columns:1fr}
  .category-frame-shell{height:390px}
 }
+
+.category-form-card.category-add-form,.category-form-card.category-import-form{padding-left:24px;padding-right:24px}
+.category-frame-scaled{position:relative;overflow:hidden;background:white;max-width:100%}
+.category-frame-scaled iframe{display:block;border:0;margin:0;position:absolute;top:0;left:0;max-width:none!important;max-height:none!important}
+.category-source-preview-message{
+  width:100%;height:100%;min-height:200px;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;gap:12px;text-align:center;
+  padding:22px;background:#fafbfc;border:1px solid #e6e7e9;border-radius:10px;color:#8d9198
+}
+.category-source-preview-message strong{font-size:12px;color:#313640}
+.category-source-preview-message p{font-size:10px;color:#848992;max-width:330px;line-height:1.7;margin:0}
