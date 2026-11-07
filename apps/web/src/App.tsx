@@ -9,7 +9,7 @@ type Landmark={name:string;detail:string}
 type Media={url:string;alt:string;category?:string;layout?:'regular'|'large'}
 type MasterField={key:string;section:string;kind:'text'|'href'|'src'|'alt';label:string;value:string}
 type MasterSection={id:string;title:string;fields:MasterField[]}
-type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;rooms?:Room[]}
+type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;rooms?:Room[]}
 type User={id:number;name:string;email:string;role:string}
 type LoginResult={token:string;user:User}
 type Enquiry={id:number;property:string;property_id:number;room_id:number|null;name:string;email:string;phone:string;university:string;move_in_date:string|null;message:string;status:string;assigned_to_id:number|null;created_at:string}
@@ -35,7 +35,7 @@ const fmt=(d?:string|null)=>d?new Date(d).toLocaleDateString('en-GB',{day:'numer
 const readPath=()=>window.location.pathname
 type Offer={title:string;description:string;valid_until?:string}
 type Review={name:string;quote:string;source_url:string}
-const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
+const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
 const blankRoom={name:'',room_type:'En suite',details:'',size_sqm:null as number|null,kitchen:'Shared',bathroom:'Private',price:null as number|null,currency:'GBP',price_period:'week',available_from:null as string|null,availability:'enquire',rate_checked_at:null as string|null,source_url:'',image_url:'',image_alt:'',image_layout:'regular' as 'regular'|'large',active:true,tenancies:[] as Tenancy[]}
 
 function Logo(){return <span className="brand"><span className="brand-icon">a<span>.</span></span><span className="brand-text">accom<small>BY EMLEN</small></span></span>}
@@ -390,7 +390,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   setBusy(true);setError('');setSaveNotice('');
   const trimmed=(s:string)=>s.trim()
   const data={...form,
-   highlights:form.highlights.map(trimmed).filter(Boolean),amenities:form.amenities.map(trimmed).filter(Boolean),
+   highlights:form.highlights.map(trimmed).filter(Boolean),highlight_descriptions:form.highlights.map((_,i)=>trimmed(form.highlight_descriptions[i]||'')),amenities:form.amenities.map(trimmed).filter(Boolean),
    gallery:form.gallery.filter(p=>p.url.trim()).map(p=>({...p,url:p.url.trim(),alt:p.alt?.trim()||form.name+' accommodation photo',layout:p.layout||'regular'})),
    floorplans:form.floorplans.filter(p=>p.url.trim()).map(p=>({...p,url:p.url.trim(),alt:p.alt?.trim()||'Floor plan',layout:p.layout||'regular'})),
    faq:form.faq.filter(p=>p.question.trim()||p.answer.trim()),policies:form.policies.filter(p=>p.question.trim()||p.answer.trim()),
@@ -567,7 +567,7 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
        </div>}
        {activeSection==='overview'&&<div className="accom-fields-group">
         <label>Overview / property description<textarea rows={4} value={form.description} onChange={e=>set('description',e.target.value)}/></label>
-        <RepeatableField title="Property highlights" items={form.highlights} create={()=>''} onChange={v=>set('highlights',v)} describe={v=>v||'New highlight'} render={(v,change)=><label>Highlight<input value={v} onChange={e=>change(e.target.value)}/></label>}/>
+        <RepeatableField title="Property highlights" items={form.highlights.map((title,i)=>({title,detail:form.highlight_descriptions[i]||''}))} create={()=>({title:'',detail:''})} onChange={v=>setForm(f=>({...f,highlights:v.map(item=>item.title),highlight_descriptions:v.map(item=>item.detail)}))} describe={v=>v.title||'New highlight'} render={(v,change)=><><label>Highlight title<input value={v.title} onChange={e=>change({...v,title:e.target.value})}/></label><label>Highlight description<textarea rows={2} value={v.detail} onChange={e=>change({...v,detail:e.target.value})}/></label></>}/>
        </div>}
        {activeSection==='tours'&&<div className="accom-fields-group">
         <label>Virtual tour link<input type="url" value={form.tour_url||''} onChange={e=>set('tour_url',e.target.value)}/></label>
