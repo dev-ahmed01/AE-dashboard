@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowRight,Check,ChevronDown,ChevronLeft,ChevronRight,Compass,Heart,Home,Image as ImageIcon,LayoutDashboard,MapPin,Menu,Search,ShieldCheck,SlidersHorizontal,Sparkles,Users,Wallet,X} from 'lucide-react'
+import {ArrowRight,Check,ChevronDown,ChevronLeft,ChevronRight,Compass,Heart,Home,Image as ImageIcon,LayoutDashboard,MapPin,Menu,Search,ShieldCheck,SlidersHorizontal,Sparkles,Users,Wallet,Upload,X} from 'lucide-react'
 import RepeatableField from './RepeatableField'
 import TenancyEditor, {type Tenancy} from './TenancyEditor'
 
