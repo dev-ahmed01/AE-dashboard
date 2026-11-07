@@ -109,6 +109,10 @@ class Property(Base):
     meta_description: Mapped[str] = mapped_column(String(400), default='')
     noindex: Mapped[bool] = mapped_column(Boolean, default=False)
     nofollow: Mapped[bool] = mapped_column(Boolean, default=False)
+    noarchive: Mapped[bool] = mapped_column(Boolean, default=False)
+    noimageindex: Mapped[bool] = mapped_column(Boolean, default=False)
+    nosnippet: Mapped[bool] = mapped_column(Boolean, default=False)
+    static_sections: Mapped[list] = mapped_column(JSON, default=list)
     canonical_override: Mapped[str] = mapped_column(Text, default='')
     published: Mapped[bool] = mapped_column(Boolean, default=False)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -364,7 +368,7 @@ def prop_json(p, detail=False, staff=False):
     rooms=[room_json(r) for r in p.rooms if staff or (r.active and r.availability!='unavailable')]
     price,currency,period,note=_headline_rate(p)
     d={'id':p.id,'name':p.name,'slug':p.slug,'city':p.city,'country':p.country,'address':p.address,'postcode':p.postcode,'university':p.university,'description':p.description,'gallery':p.gallery,'published':p.published,'archived':p.archived,'is_demo':p.is_demo,'edit_version':p.edit_version,'verified_at':p.verified_at.isoformat() if p.verified_at else None,'from_price':price,'price_note':note,'currency':currency,'price_period':period}
-    if detail:d.update({'highlights':p.highlights,'highlight_descriptions':p.highlight_descriptions,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'content_overrides':p.content_overrides or {},'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'nofollow':p.nofollow,'canonical_override':p.canonical_override,'rooms':rooms})
+    if detail:d.update({'highlights':p.highlights,'highlight_descriptions':p.highlight_descriptions,'amenities':p.amenities,'policies':p.policies,'faq':p.faq,'landmarks':p.landmarks,'floorplans':p.floorplans,'tour_url':p.tour_url,'offers':p.offers,'reviews':p.reviews,'review_source_url':p.review_source_url,'review_score':float(p.review_score) if p.review_score is not None else None,'review_count':p.review_count,'content_overrides':p.content_overrides or {},'seo_title':p.seo_title,'meta_description':p.meta_description,'noindex':p.noindex,'nofollow':p.nofollow,'noarchive':p.noarchive,'noimageindex':p.noimageindex,'nosnippet':p.nosnippet,'static_sections':p.static_sections or [],'canonical_override':p.canonical_override,'rooms':rooms})
     return d
 
 def slugify(t):
@@ -437,10 +441,22 @@ class PropertyInput(BaseModel):
     meta_description: str = ''
     noindex: bool = False
     nofollow: bool = False
+    noarchive: bool = False
+    noimageindex: bool = False
+    nosnippet: bool = False
+    static_sections: list[str] = Field(default_factory=list)
     canonical_override: str = Field(default='',max_length=2048)
     published: bool = False
     is_demo: bool = False
     edit_version: int | None = Field(default=None,ge=1)
+
+    @field_validator('static_sections')
+    @classmethod
+    def validate_static_sections(cls, value):
+        allowed={section_id for section_id,_ in SECTIONS}
+        if len(value)>len(allowed) or len(value)!=len(set(value)) or any(item not in allowed for item in value):
+            raise ValueError('Invalid or duplicate static page sections')
+        return value
 
     @field_validator('canonical_override')
     @classmethod
