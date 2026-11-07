@@ -80,9 +80,9 @@ SECTION_FIELDS = [
 for index in range(4):
     SECTION_FIELDS.extend([
         ("payments", f"payments.card_{index + 1}.title", f"Payment card {index + 1} · title",
-         "#payments .payments-grid > div strong", "text", "Payment cards", index),
+         "#payments .payments-grid > div strong", "text", f"Payment card {index + 1}", index),
         ("payments", f"payments.card_{index + 1}.description", f"Payment card {index + 1} · description",
-         "#payments .payments-grid > div p", "textarea", "Payment cards", index),
+         "#payments .payments-grid > div p", "textarea", f"Payment card {index + 1}", index),
     ])
 
 FIELD_BY_KEY = {item[1]: item for item in SECTION_FIELDS}
