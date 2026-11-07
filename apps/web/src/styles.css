@@ -948,3 +948,68 @@ section.category-split-workspace.category-add-page{
   .accom-editor-fields-head{padding:17px}
   .accom-editor-fields-body{padding:16px}
 }
+
+/* Typography + density pass across Category to match the older WE dashboard. */
+.category-shell:not(.accom-editor-shell) .category-content{
+  padding-top:32px;
+}
+.category-content .category-heading h1{
+  font-size:clamp(30px,2.7vw,37px)!important;line-height:1.13
+}
+.category-content .category-heading{margin-bottom:23px}
+.category-content .category-tabs{
+  margin-bottom:26px;border-radius:14px
+}
+.category-content .category-tabs button{
+  min-height:66px;font-size:13px;font-weight:750;padding:15px 9px
+}
+.category-content .category-tabs button.active{background:#fff}
+.category-content .category-tabs button:hover{background:#fffafa}
+.category-content .category-heading-actions .signed-user{font-size:10px}
+.category-content .category-list-toolbar{
+  padding:0;margin:5px 0 18px;
+  background:transparent;border:0;box-shadow:none;min-height:0
+}
+.category-content .category-filters{background:transparent;padding:0}
+.category-content .category-filters button{
+  font-size:11px;font-weight:750;padding:10px 13px
+}
+.category-content .category-filters button small{font-size:9px}
+.category-content .category-search{
+  width:335px;max-width:100%;min-width:210px;min-height:44px;flex:none
+}
+.category-content .category-search input{font-size:11px;min-height:39px!important}
+.category-content .category-table-header{
+  padding:14px 19px;font-size:10px;margin-bottom:11px
+}
+.category-content .category-page-row{
+  min-height:92px;padding:17px 19px;gap:15px
+}
+.category-content .category-page-row h3{
+  font-size:14px;letter-spacing:-.015em
+}
+.category-content .category-page-row small,
+.category-content .category-table-type,
+.category-content .category-table-url,
+.category-content .category-table-date{font-size:10px}
+.category-content .category-table-number{
+  width:39px;height:39px;font-size:11px
+}
+.category-content .category-row-action-menu summary{font-size:10px;padding:9px 11px}
+.category-content .category-page-status{font-size:9px;padding:7px 9px}
+.category-content .admin-message{
+  margin:0 0 16px;min-height:0;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 13px;border-radius:10px;
+  font-size:11px;line-height:1.45;font-weight:600
+}
+.category-content .admin-message button{
+  flex:none;margin:0;font-size:16px;line-height:1
+}
+.category-content .category-add-form h2,
+.category-content .category-import-form h2{font-size:25px}
+.category-content .category-preview-pane-heading h3{font-size:17px}
+@media(max-width:760px){
+ .category-content .category-search{width:100%;min-width:0}
+ .category-content .category-page-row{min-height:88px}
+}
