@@ -140,6 +140,13 @@ def _photos(soup, photos, preview):
             img.attrs.pop("data-asset", None)
         elif not sample:
             el.decompose()
+    if not sample:
+        # The original template ships with bundled concept images. None may
+        # appear on a published page unless the property has approved media.
+        for img in soup.select("img[data-asset]"):
+            img.attrs.pop("data-asset", None)
+            img["src"] = EMPTY_GIF
+            img["alt"] = "Property image not supplied"
     return valid
 
 
