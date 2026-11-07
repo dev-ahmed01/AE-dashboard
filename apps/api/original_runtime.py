@@ -88,7 +88,7 @@ def _photos(soup, photos, preview):
             img.attrs.pop("data-asset", None)
             tile["data-open-image"] = str(i)
             tile["aria-label"] = "Open " + img["alt"]
-            tile["class"] = ["gallery-tile"] + (["gallery-large"] if item.get("layout") == "large" or i == 0 else [])
+            tile["class"] = ["gallery-tile"] + (["gallery-large"] if item.get("layout") == "large" else [])
         elif valid or not sample:
             tile.decompose()
     if valid and len(valid) == 1:
