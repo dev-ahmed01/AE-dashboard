@@ -1,0 +1,64 @@
+"""The original Accom master must expose every section as prefilled page fields."""
+from bs4 import BeautifulSoup
+from test_flow import client, sign_in, draft
+
+
+def test_thirteen_sections_prefilled_and_editable_without_touching_master(client):
+    auth = sign_in(client)
+    property_record = draft(client, auth, name="Map Test Residence")
+    url = f"/api/admin/properties/{property_record['id']}"
+    mapping = client.get(url + "/content-map", headers=auth)
+    assert mapping.status_code == 200, mapping.text
+    result = mapping.json()
+    assert result["total_sections"] == 13
+    assert [part["id"] for part in result["sections"]] == [
+        "top", "overview", "about", "tours", "amenities", "rooms", "rules",
+        "payments", "floorplan", "neighbourhood", "faqs", "location", "reviews"
+    ]
+    assert all(part["fields"] for part in result["sections"]), [
+        (part["id"], len(part["fields"])) for part in result["sections"]
+    ]
+    about = next(part for part in result["sections"] if part["id"] == "about")
+    heading = next(field for field in about["fields"] if field["kind"] == "text"
+                   and "Living at" in field["value"])
+    assert heading["value"] == "Living at Map Test Residence"
+
+    updated_copy = {heading["key"]: "Your next home near campus"}
+    preview = client.post(url + "/preview-draft", headers=auth,
+                          json={"content_overrides": updated_copy})
+    assert preview.status_code == 200, preview.text
+    html = BeautifulSoup(preview.text, "html.parser")
+    assert "Your next home near campus" in html.select_one("#about h2").get_text(" ", strip=True)
+
+    # An unsaved preview cannot alter persisted page copy.
+    saved = client.get("/api/admin/properties", headers=auth).json()
+    record = next(p for p in saved if p["id"] == property_record["id"])
+    assert record["content_overrides"] == {}
+
+    data = {**record, "content_overrides": updated_copy}
+    patch = client.patch(url, headers=auth, json=data)
+    assert patch.status_code == 200, patch.text
+    assert patch.json()["content_overrides"] == updated_copy
+    new_map = client.get(url + "/content-map", headers=auth).json()
+    current_about = next(part for part in new_map["sections"] if part["id"] == "about")
+    assert any(field["key"] == heading["key"] and field["value"] == "Your next home near campus"
+               for field in current_about["fields"])
+
+
+def test_page_copy_rejects_script_urls_and_html_is_escaped(client):
+    auth = sign_in(client)
+    p = draft(client, auth, name="Link Safety Residence")
+    url = f"/api/admin/properties/{p['id']}"
+    fields = [field for part in client.get(url + "/content-map", headers=auth).json()["sections"]
+              for field in part["fields"]]
+    link = next(field for field in fields if field["kind"] == "href")
+    invalid = client.patch(url, headers=auth,
+                           json={**p, "content_overrides": {link["key"]: "javascript:alert(1)"}})
+    assert invalid.status_code == 422
+
+    text_field = next(field for field in fields if field["kind"] == "text")
+    preview = client.post(url + "/preview-draft", headers=auth,
+                          json={"content_overrides": {text_field["key"]: "<script>alert(1)</script>"}})
+    assert preview.status_code == 200
+    assert "<script>alert(1)</script>" not in preview.text
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in preview.text
