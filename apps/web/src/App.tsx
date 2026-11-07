@@ -9,7 +9,7 @@ type Landmark={name:string;detail:string}
 type Media={url:string;alt:string;category?:string;layout?:'regular'|'large'}
 type MasterField={key:string;section:string;kind:'text'|'textarea'|'cta_label'|'cta_link'|'image'|'image_alt';label:string;group:string;value:string}
 type MasterSection={id:string;title:string;fields:MasterField[]}
-type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;rooms?:Room[]}
+type Property={id:number;name:string;slug:string;city:string;country:string;address:string;postcode:string;university:string;description:string;gallery:Media[];content_overrides?:Record<string,string>;published:boolean;archived:boolean;is_demo?:boolean;edit_version:number;price_note?:string;verified_at:string|null;from_price:number|null;currency:string;price_period:string;highlights?:string[];highlight_descriptions?:string[];amenities?:string[];policies?:Pair[];faq?:Pair[];landmarks?:Landmark[];floorplans?:Media[];tour_url?:string;offers?:{title:string;description:string;valid_until?:string}[];reviews?:{name:string;quote:string;source_url:string}[];review_source_url?:string;review_score?:number|null;review_count?:number|null;seo_title?:string;meta_description?:string;noindex?:boolean;nofollow?:boolean;canonical_override?:string;rooms?:Room[]}
 type User={id:number;name:string;email:string;role:string}
 type LoginResult={token:string;user:User}
 type Enquiry={id:number;property:string;property_id:number;room_id:number|null;name:string;email:string;phone:string;university:string;move_in_date:string|null;message:string;status:string;assigned_to_id:number|null;created_at:string}
@@ -35,7 +35,7 @@ const fmt=(d?:string|null)=>d?new Date(d).toLocaleDateString('en-GB',{day:'numer
 const readPath=()=>window.location.pathname
 type Offer={title:string;description:string;valid_until?:string}
 type Review={name:string;quote:string;source_url:string}
-const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
+const defaults={name:'',slug:'',is_demo:false,city:'',country:'United Kingdom',address:'',postcode:'',university:'',description:'',content_overrides:{} as Record<string,string>,published:false,noindex:false,nofollow:false,canonical_override:'',seo_title:'',meta_description:'',gallery:[] as Media[],amenities:[] as string[],highlights:[] as string[],highlight_descriptions:[] as string[],policies:[] as Pair[],faq:[] as Pair[],landmarks:[] as Landmark[],floorplans:[] as Media[],tour_url:'',offers:[] as Offer[],reviews:[] as Review[],review_source_url:'',review_score:null as number|null,review_count:null as number|null}
 const blankRoom={name:'',room_type:'En suite',details:'',size_sqm:null as number|null,kitchen:'Shared',bathroom:'Private',price:null as number|null,currency:'GBP',price_period:'week',available_from:null as string|null,availability:'enquire',rate_checked_at:null as string|null,source_url:'',image_url:'',image_alt:'',image_layout:'regular' as 'regular'|'large',active:true,tenancies:[] as Tenancy[]}
 
 function Logo(){return <span className="brand"><span className="brand-icon">a<span>.</span></span><span className="brand-text">accom<small>BY EMLEN</small></span></span>}
@@ -351,7 +351,6 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const [form,setForm]=useState({...defaults,...(source||{}),gallery:(source?.gallery||[]).map((photo,i):Media=>({...photo,layout:photo.layout||(i===0?'large':'regular')}))})
  const [busy,setBusy]=useState(false),[error,setError]=useState('')
  const [activeSection,setActiveSection]=useState('top')
- const [seoOpen,setSeoOpen]=useState(false)
  const [contentSections,setContentSections]=useState<MasterSection[]>([])
  const [contentError,setContentError]=useState('')
  const [templateSample,setTemplateSample]=useState<Record<string,unknown>|null>(null)
@@ -365,7 +364,6 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
  const [previewScale,setPreviewScale]=useState(.4)
  const previewContainerRef=useRef<HTMLDivElement|null>(null)
  const previewFrameRef=useRef<HTMLIFrameElement|null>(null)
- const fieldsPanelRef=useRef<HTMLElement|null>(null)
  const original=JSON.stringify({...defaults,...(source||{})})
  const [saveNotice,setSaveNotice]=useState('')
  const dirty=JSON.stringify({...defaults,...(source||{}),...form})!==original
@@ -384,8 +382,8 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   e.preventDefault()
   if(form.name.trim().length<3||form.city.trim().length<2){
    setActiveSection('top')
-   fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})
-   setError('Complete the property name and city in Hero & gallery before saving.')
+   document.getElementById('accom-section-top')?.scrollIntoView({block:'start',behavior:'smooth'})
+   setError('Complete the property name and city in Property identity before saving.')
    return
   }
   setBusy(true);setError('');setSaveNotice('');
@@ -444,7 +442,6 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   {id:'reviews',title:'Student reviews',desc:'Verified review content and attribution',index:'14',icon:Heart},
   {id:'enquiry',title:'Enquiry & CTA panel',desc:'Sticky side panel and enquiry buttons',index:'15',icon:ArrowRight},
  ]
- const currentSection=sections.find(item=>item.id===activeSection)||sections[0]
  const copyFields=contentSections.find(section=>section.id===activeSection)?.fields||[]
  const copyGroups=[...new Set(copyFields.map(field=>field.group))].map(name=>({name,fields:copyFields.filter(field=>field.group===name)}))
  const applyTemplateSample=(sample:Record<string,unknown>)=>{
@@ -557,6 +554,9 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
   if(!tab){setPreviewError('Allow pop-ups to open the preview.');return}
   tab.document.open();tab.document.write(previewHtml);tab.document.close()
  }
+ const seoPreviewTitle=form.seo_title.trim()||form.name.trim()||'Accommodation listing'
+ const seoPreviewDescription=form.meta_description.trim()||form.description.trim().slice(0,155)||'Add a meta description to preview this result.'
+ const seoPreviewUrl=form.canonical_override.trim()||window.location.origin+'/property/'+encodeURIComponent(form.slug||'new-page')
  const previewWidth=previewMode==='desktop'?1280:390
  
  return <div className="drawer-shade accom-editor-overlay" role="presentation">
