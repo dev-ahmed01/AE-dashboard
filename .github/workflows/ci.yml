@@ -34,3 +34,39 @@ jobs:
       - name: Test live property-template data adapter
         working-directory: apps/web
         run: node --test tests/template-data.test.mjs
+
+  docker-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the same API image used by Docker Compose
+        run: docker build --file apps/api/Dockerfile --tag accom-api-smoke .
+      - name: Verify the final image contains all runtime modules
+        run: docker run --rm --entrypoint python accom-api-smoke -c "import app, editor_preview, property_runtime, demo_seed; print('API imports OK')"
+      - name: Start API image and verify its HTTP health check
+        env:
+          DATABASE_URL: sqlite:////tmp/accom-smoke.db
+          JWT_SECRET: github-ci-smoke-only-secret-with-more-than-32-characters
+          ADMIN_EMAIL: smoke-admin@example.test
+          ADMIN_PASSWORD: github-ci-smoke-only-password-123
+          APP_ENVIRONMENT: testing
+        run: |
+          docker run -d --name accom-api-smoke \
+            -p 127.0.0.1:18080:8000 \
+            -e DATABASE_URL -e JWT_SECRET -e ADMIN_EMAIL -e ADMIN_PASSWORD -e APP_ENVIRONMENT \
+            accom-api-smoke
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:18080/api/health >/dev/null; then
+              echo "API image is healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs accom-api-smoke
+          exit 1
+      - name: Print container logs and clean up
+        if: always()
+        run: |
+          docker logs accom-api-smoke || true
+          docker rm -f accom-api-smoke || true
