@@ -9,7 +9,7 @@ const origin=new URL(site).origin;
 const dest=path.resolve('apps/web/public/accom-live');
 const visited=new Set();
 const manifest=[];
-const queue=['/'];
+const queue=['/index.html'];
 const maxFiles=300,maxBytes=35000000;
 let total=0;
 const supported=/\.(?:html?|css|js|mjs|cjs|json|svg|png|webp|jpe?g|gif|ico|woff2?|ttf|otf|mp4|webm|avif|txt)$/i;
