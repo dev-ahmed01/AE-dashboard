@@ -166,7 +166,8 @@ try {
   assert.equal(await staticPanel.locator('.accom-static-row').count(),15,'Static tab shows all page sections');
   await staticPanel.getByRole('checkbox',{name:'Static Payments & fees'}).check();
   await page.getByRole('button',{name:/Payments & fees/}).click();
-  assert(await page.locator('#accom-section-payments fieldset').isDisabled(),'Static sections must lock their content controls');
+  assert((await page.locator('#accom-section-payments fieldset').getAttribute('disabled'))!==null,'Static sections must apply the native disabled fieldset attribute');
+  assert(await page.locator('#accom-section-payments fieldset button').first().isDisabled(),'Locked section action buttons must be disabled');
   await page.screenshot({path:'qa/evidence/static-right-panel.png'});
   await page.getByRole('tab',{name:'Preview'}).click();
   assert(await page.locator('iframe[title="Live property page visual preview"]').count()===1,'Preview remains accessible after SEO and Static');
