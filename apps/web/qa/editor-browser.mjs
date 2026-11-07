@@ -165,7 +165,7 @@ try {
   const staticPanel=page.locator('.accom-right-static');
   assert.equal(await staticPanel.locator('.accom-static-row').count(),15,'Static tab shows all page sections');
   await staticPanel.getByRole('checkbox',{name:'Static Payments & fees'}).check();
-  const staticRow=staticPanel.locator('.accom-static-row').filter({has:staticPanel.getByRole('checkbox',{name:'Static Payments & fees'})});
+  const staticRow=staticPanel.locator('.accom-static-row:has(input[aria-label="Static Payments & fees"])');
   const staticRowLayout=await staticRow.evaluate(el=>{
     const label=el.querySelector('span:first-child').getBoundingClientRect();
     const track=el.querySelector('.accom-static-switch').getBoundingClientRect();
