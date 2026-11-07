@@ -5,7 +5,7 @@ used by the trusted built-in template are copied from an editor draft.
 """
 from types import SimpleNamespace
 import re
-from property_runtime import render_property
+from original_runtime import render_property
 
 TEXT_FIELDS = {
     'name', 'city', 'country', 'address', 'postcode', 'university',
