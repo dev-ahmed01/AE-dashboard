@@ -25,7 +25,9 @@ def test_kingston_demo_preloaded_once_with_multiple_contracts(client):
     assert 'noindex,nofollow' in page.text
     assert '/accom-template/original-master.js' in page.text
     assert '/accom-template/original-integration.js' in page.text
-    assert 'assets/hero-bedroom.webp' in page.text
+    assert 'class="gallery"' in page.text
+    assert '<style>' in page.text
+    assert '<script defer="" src="/accom-template/original-master.js"></script>' in page.text
     assert 'accom-property-data' in page.text
     assert page.headers['cache-control']=='no-store'
     assert client.get('/property/iq-kingston?preview_token=invalid').status_code==404
