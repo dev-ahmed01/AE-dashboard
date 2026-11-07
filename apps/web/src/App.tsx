@@ -588,24 +588,34 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
    {error&&<p className="error accom-editor-inline-error" role="alert">{error}</p>}
    <form id="accom-property-edit-form" onSubmit={submit} className="drawer-form accom-editor-form">
     <div className="accom-editor-workspace">
-     <aside className="accom-editor-sidebar" aria-label="Page sections">
-      <div className="accom-editor-pane-heading"><strong>Edit sections</strong><span>{sections.length} sections</span></div>
-      <nav className="accom-editor-sections" aria-label="Choose editing section">
-       {sections.map(item=>{const Icon=item.icon;return <button type="button" key={item.id} aria-current={activeSection===item.id?'step':undefined} className={'accom-editor-section-nav '+(activeSection===item.id?'active':'')} onClick={()=>{setActiveSection(item.id);fieldsPanelRef.current?.scrollTo({top:0,behavior:'instant'})}}><Icon size={15}/><span>{item.title}</span><span className="accom-editor-section-index">{item.index}</span></button>})}
-      </nav>
-      <div className="accom-editor-side-note">Fields follow the approved property layout. <button type="button" onClick={()=>{setSourceReference(true);setSourceSection('top')}}>View original design</button></div>
-     </aside>
-     <main ref={fieldsPanelRef} className="accom-editor-fields" aria-live="off">
-      <div className="accom-editor-fields-head"><span className="eyebrow">SECTION {currentSection.index}</span><h3>{currentSection.title}</h3><p>{currentSection.desc}</p></div>
-      <div className="accom-editor-fields-body">
+     <div className="accom-stacked-sections" aria-label="Page content sections">
+       <div className="accom-editor-list-intro">
+         <span className="accom-section-eyebrow">01 / PAGE CONTENT</span>
+         <h2>Edit page sections</h2>
+         <p>Open any section to edit its content. Sections follow the original Accom property page order.</p>
+         <div className="accom-editor-list-meta"><span>{sections.length} content sections</span><button type="button" onClick={()=>document.getElementById('accom-seo-settings')?.scrollIntoView({block:'start',behavior:'smooth'})}>Go to SEO settings <ArrowRight size={12}/></button></div>
+       </div>
        {(usingTemplateSample||form.is_demo)&&<div className="accom-template-sample-note" role="status">
         <strong>Demonstration content — verification required</strong>
         <p>{usingTemplateSample?'Examples from the approved template have filled empty draft fields. They are not verified property details and nothing is saved until you choose Save draft.':'This draft contains demonstration material. Confirm actual property details before publishing.'}</p>
        </div>}
-       {!usingTemplateSample&&templateSample&&!source?.published&&(activeSection==='top'||activeSection==='gallery')&&<div className="accom-template-optional">
-        <span>Want to start with the original template's illustrative content?</span>
-        <button type="button" onClick={()=>applyTemplateSample(templateSample)}>Fill blank fields with sample content</button>
+       {!usingTemplateSample&&templateSample&&!source?.published&&<div className="accom-template-optional">
+        <span>Use illustrative content from the original template?</span>
+        <button type="button" onClick={()=>applyTemplateSample(templateSample)}>Fill blank draft fields</button>
        </div>}
+       {sections.map(item=>{
+        const expanded=activeSection===item.id
+        const extraCount=contentSections.find(section=>section.id===item.id)?.fields.length||0
+        const detail=item.id==='gallery'?form.gallery.length+' photos':item.id==='overview'?form.highlights.length+' highlights':item.id==='rooms'?(source?.rooms?.length||0)+' room types':item.id==='faqs'?form.faq.length+' FAQs':item.id==='rules'?form.policies.length+' policies':item.id==='location'?form.landmarks.length+' landmarks':item.id==='amenities'?form.amenities.length+' amenities':item.id==='reviews'?form.reviews.length+' reviews':extraCount+' editable fields'
+        return <section className={'accom-stack-section '+(expanded?'expanded':'')} id={'accom-section-'+item.id} key={item.id} aria-label={item.title}>
+         <button type="button" className="accom-stack-toggle" aria-expanded={expanded} aria-controls={'accom-section-panel-'+item.id} onClick={()=>setActiveSection(expanded?'':item.id)}>
+          <span className="accom-stack-index">{item.index}</span>
+          <span className="accom-stack-heading"><strong>{item.title}</strong><small>{detail} · Original page order</small></span>
+          <ChevronDown className="accom-stack-chevron" size={17}/>
+         </button>
+         {expanded&&<div className="accom-stack-expanded" id={'accom-section-panel-'+item.id}>
+           <div className="accom-stack-content-intro"><h3>{item.title}</h3><p>{item.desc}</p></div>
+           <div className="accom-editor-fields-body">
        {activeSection!=='top'&&copyEditor}
 
        {activeSection==='top'&&<div className="accom-edit-card-stack">
@@ -677,8 +687,12 @@ function PropertyEditor({source,close,saved,editRoom}:{source:Property|null;clos
        </div>}
        {activeSection==='top'&&copyEditor}
 
-      </div>
-     </main>
+
+           </div>
+         </div>}
+        </section>
+       })}
+     </div>
      <section className="accom-editor-preview" aria-label="Complete Accom property preview">
       <div className="accom-editor-preview-head">
         <div className="accom-editor-preview-label"><h3>Live Preview</h3><small>{sourceReference?'Approved original page · read-only':'Actual property layout · updates as you type'}</small></div>
