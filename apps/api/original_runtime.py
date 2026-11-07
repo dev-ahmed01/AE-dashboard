@@ -349,6 +349,14 @@ def render_property(p, payload, public_site_url, preview=False):
         "," +
         ("nofollow" if blocked or bool(getattr(p, "nofollow", False)) else "follow")
     )
+    # The extra robots instructions are exposed in the editor's SEO panel.
+    # Some crawlers ignore noarchive; it is kept for engines that support it.
+    if bool(getattr(p, "noarchive", False)):
+        robots += ",noarchive"
+    if bool(getattr(p, "noimageindex", False)):
+        robots += ",noimageindex"
+    if bool(getattr(p, "nosnippet", False)):
+        robots += ",nosnippet"
     for key, value in (("description", _text(getattr(p, "meta_description", "")) or desc[:160]),
                        ("robots", robots)):
         tag = soup.head.find("meta", attrs={"name": key})
