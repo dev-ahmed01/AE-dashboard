@@ -85,6 +85,11 @@ try {
   assert.equal(await page.frameLocator('iframe[title="Live property page visual preview"]').locator('.gallery-tile').count(),5,
     'Unfilled admin preview displays original sample gallery, explicitly labeled as a template example');
   await page.screenshot({path:'qa/evidence/exact-master-draft-preview-loaded.png'});
+  const draftFrame = page.frameLocator('iframe[title="Live property page visual preview"]');
+  await draftFrame.locator('.gallery-tile').first().click();
+  await draftFrame.locator('#galleryDialog').waitFor({state:'visible',timeout:10000});
+  await draftFrame.locator('#galleryDialog [aria-label="Close photo tour"]').click();
+  await draftFrame.locator('#galleryDialog').waitFor({state:'hidden',timeout:10000});
 
 
   await page.locator('.accom-editor-preview-controls').getByRole('button',{name:'Original',exact:true}).click();
