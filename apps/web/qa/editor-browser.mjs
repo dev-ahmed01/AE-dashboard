@@ -123,7 +123,7 @@ try {
 
   await page.getByRole('button',{name:/Residence overview/}).click();
   await page.locator('.accom-editor-fields').getByRole('button',{name:'Add another'}).first().click();
-  await page.getByRole('textbox',{name:'Highlight',exact:true}).fill('Premium student support');
+  await page.getByRole('textbox',{name:'Highlight title',exact:true}).fill('Premium student support');
   await page.waitForFunction(()=>{
     const frame=document.querySelector('iframe[title="Live property page visual preview"]');
     return frame?.contentDocument?.body?.textContent?.includes('Premium student support');
