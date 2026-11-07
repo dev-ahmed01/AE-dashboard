@@ -262,7 +262,7 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
             <strong>{file?'File selected':'Drop a project file here'}</strong>
             <span className="category-file-button">{file?'Choose another':'Choose file'}</span>
             <input type="file" accept=".html,.htm,.zip,.jsx,.tsx,.vue,.svelte,.astro" onChange={e=>{setFile(e.target.files?.[0]||null);setInspection(null);setSelectedSource('');setSelectedTemplate(null)}}/>
-            <small>{file?.name||'.zip, .html, .tsx, .jsx, .vue, .svelte, .astro · up to 24 MB'}</small>
+            <small>{file?.name||'HTML up to 1.5 MB · project ZIP up to 24 MB · JSX / TSX / Vue / Astro'}</small>
           </label>
           <label>Template name (optional)<input value={templateName} onChange={e=>setTemplateName(e.target.value)} placeholder="e.g. Student residence detail"/></label>
           <button type="button" className="primary category-submit" disabled={busy||user.role!=='admin'||!file} onClick={upload}>{busy?'Inspecting…':'Inspect project'} <ArrowRight size={16}/></button>
@@ -273,7 +273,8 @@ function Admin({go,user}:{go:(s:string)=>void;user:User|null}){
         <div className="category-preview-pane-heading"><h3>Template Inspection</h3><span className="category-light-status">{inspection?'Project inspected':selectedTemplate?'Mapped template':'Ready to inspect'}</span></div>
         <div className="category-frame-shell" ref={templateFrameContainer}>
          <div className="category-frame-scaled" style={{width:1280*templateFrameScale,height:960*templateFrameScale}}>
-         {selectedTemplate&&previewHTML?<iframe title="Imported template preview" srcDoc={previewHTML} sandbox="" style={{width:1280,height:960,transform:'scale('+templateFrameScale+')',transformOrigin:'top left'}}/>:
+         {inspection?<div className="category-source-preview-message"><ImageIcon size={31}/><strong>{inspection.pages.length} routes or components detected</strong><p>Select a route in the inspection panel below. A pixel-accurate live preview needs a static build/export and its assets.</p></div>:
+          selectedTemplate&&previewHTML?<iframe title="Imported template preview" srcDoc={previewHTML} sandbox="" style={{width:1280,height:960,transform:'scale('+templateFrameScale+')',transformOrigin:'top left'}}/>:
           <iframe title="Original Accom template inspection" src="/accom-live/index.html" sandbox="allow-scripts allow-popups" style={{width:1280,height:960,transform:'scale('+templateFrameScale+')',transformOrigin:'top left'}}/>}
          </div>
         </div>
