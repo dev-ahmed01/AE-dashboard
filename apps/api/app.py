@@ -13,6 +13,8 @@ import boto3
 from PIL import Image, UnidentifiedImageError
 import secrets
 import smtplib
+from functools import lru_cache
+from pathlib import Path
 from bs4 import BeautifulSoup
 from email.message import EmailMessage
 from html import escape
@@ -22,13 +24,15 @@ from decimal import Decimal
 from typing import Literal
 
 import jwt
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 from argon2 import PasswordHasher
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint, create_engine, func, or_, select, update
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint, create_engine, func, or_, select, text, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 from original_runtime import render_property
@@ -256,6 +260,26 @@ def local_demo_enabled():
             and CORS_ORIGIN.rstrip('/') in ('http://localhost:8081','http://127.0.0.1:8081',
                                             'http://localhost:5173','http://127.0.0.1:5173'))
 
+def _validate_hosted_settings() -> None:
+    """Fail closed for publicly hosted deployments and reject demo credentials."""
+    if APP_ENVIRONMENT not in ('staging', 'production'):
+        return
+    if (not DATABASE_URL.startswith('postgresql+psycopg://')
+            or not JWT_SECRET or len(JWT_SECRET) < 32
+            or not ADMIN_EMAIL or not ADMIN_PASSWORD or len(ADMIN_PASSWORD) < 12
+            or not S3_ENDPOINT_URL or not S3_ACCESS_KEY or not S3_SECRET_KEY
+            or LOCAL_DEMO_MODE or os.getenv('SEED_ACCOM_DEMO') == '1'
+            or os.getenv('ALLOW_BOOTSTRAP_SCHEMA') == '1'):
+        raise RuntimeError('Hosted Accom requires secure DB, media storage, Admin and no demo mode')
+    if any(marker in value.upper() for value in (
+            DATABASE_URL, JWT_SECRET, ADMIN_PASSWORD, S3_ACCESS_KEY, S3_SECRET_KEY
+        ) for marker in ('REPLACE_WITH', 'CHANGE_ME')):
+        raise RuntimeError('Hosted Accom configuration contains placeholder credentials')
+    if (not CORS_ORIGIN.startswith('https://')
+            or not PUBLIC_SITE_URL.startswith('https://')):
+        raise RuntimeError('Hosted Accom requires HTTPS public and CORS origins')
+
+
 def clean_username(raw: str | None, *, reserved: bool = False) -> str | None:
     if not raw: return None
     name=raw.strip().lower()
@@ -267,6 +291,7 @@ def clean_username(raw: str | None, *, reserved: bool = False) -> str | None:
 
 @app.on_event('startup')
 def startup():
+    _validate_hosted_settings()
     if SQLITE or os.getenv('ALLOW_BOOTSTRAP_SCHEMA') == '1':
         Base.metadata.create_all(engine)  # tests/local only; production runs Alembic before start
     if ADMIN_EMAIL and ADMIN_PASSWORD and len(ADMIN_PASSWORD) >= 12:
@@ -573,7 +598,35 @@ def _send_verification(to, raw_token):
         client.send_message(msg)
 
 @app.get('/api/health')
-def health():return {'status':'ok'}
+def health():
+    """Liveness only; use /api/health/ready to check dependent services."""
+    return {'status':'ok'}
+
+
+@lru_cache(maxsize=1)
+def _migration_heads() -> set[str]:
+    config = AlembicConfig(str(Path(__file__).resolve().parent / 'alembic.ini'))
+    return set(ScriptDirectory.from_config(config).get_heads())
+
+
+@app.get('/api/health/ready')
+def readiness():
+    """Check DB access, Alembic head and private media storage before routing traffic."""
+    try:
+        with SessionLocal() as db:
+            db.execute(text('SELECT 1'))
+            revisions = set(
+                db.execute(text('SELECT version_num FROM alembic_version')).scalars()
+            )
+            if not revisions or revisions != _migration_heads():
+                raise ValueError('Database schema differs from deployed revision')
+        # The media bucket can be created on the first upload; test object-store
+        # connectivity without changing or creating user data in a health check.
+        _s3().list_buckets()
+    except Exception:
+        # Never put database URLs, bucket names, provider errors or secrets in replies.
+        raise HTTPException(status_code=503, detail='Service unavailable') from None
+    return {'status':'ready'}
 
 @app.post('/api/auth/register',status_code=201)
 def register(data:Registration,request:Request,db:Session=Depends(get_db)):
