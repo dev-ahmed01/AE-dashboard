@@ -1,0 +1,107 @@
+# Accom by Emlen isolated staging on VPS shared with SaS / Workspace dashboards.
+# A single central reverse proxy owns TCP 80/443 and the external ingress network.
+name: accom-emlen-staging-shared
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: accom
+      POSTGRES_USER: accom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set private POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U accom -d accom"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - private
+
+  minio:
+    image: pgsty/silo:RELEASE.2026-10-26T00-00-00Z
+    command: server /data
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+    volumes:
+      - media:/data
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - private
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      APP_ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://accom:${POSTGRES_PASSWORD}@db:5432/accom
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
+      ADMIN_USERNAME: ""
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+      CORS_ORIGIN: https://${AE_STAGING_HOST:?Set AE_STAGING_HOST}
+      PUBLIC_SITE_URL: https://${AE_STAGING_HOST:?Set AE_STAGING_HOST}
+      LOCAL_DEMO_MODE: "0"
+      SEED_ACCOM_DEMO: "0"
+      ALLOW_BOOTSTRAP_SCHEMA: "0"
+      DEMO_ADMIN_USERNAME: ""
+      DEMO_ADMIN_PASSWORD: ""
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: accom-assets
+      # Student registration will fail closed until email provider is provisioned.
+      SMTP_HOST: ""
+      SMTP_FROM: ""
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready',timeout=5)"]
+      interval: 20s
+      timeout: 8s
+      retries: 6
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - private
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      private: {}
+      ingress:
+        aliases:
+          - ae-web
+
+networks:
+  private:
+    internal: true
+  ingress:
+    external: true
+    name: emlen_ingress
+
+volumes:
+  media:
+  pgdata:
