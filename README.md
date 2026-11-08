@@ -40,3 +40,11 @@ For isolated staging alongside SaS and the Workspace dashboard on **one Contabo 
 ## Local demonstration sign-in
 
 Set `APP_ENVIRONMENT=development` and `LOCAL_DEMO_MODE=1` in the local `.env`. The `.env.example` includes the demonstration username `Admin` and password `Admin@123`. This account is restricted to a localhost CORS origin and automatically disabled outside development demo mode. Never expose this demo stack publicly. The sign-in field accepts email or username. Existing administrator email credentials continue to work. After pulling new code, run Docker Compose with `--build`; Alembic migrates the optional username column automatically.
+
+## Contabo production migration package
+
+The production deployment is now prepared at [ops/contabo/DEPLOY.md](ops/contabo/DEPLOY.md). It uses an independent Docker Compose project with private PostgreSQL and S3-compatible media, one shared SaS/Caddy HTTPS ingress, first-run private secret generation, schema migrations as explicit release operations, and guarded encrypted **paired SQL+S3** backup and isolated restore tools.
+
+The frontend build uses committed `apps/web/package-lock.json` and `npm ci`; API container/CI uses the fully pinned `apps/api/requirements.lock.txt`. The separate `Contabo production recovery rehearsal` GitHub workflow tests a synthetic database and object, encrypts archives and restores them into a fresh project. This is **not** an off-host disaster recovery acceptance or live VPS validation.
+
+**Do not expose the admin hostname until HTTPS, approved admin access controls (SSO/MFA or an identity-aware gateway), real backup custody and deployment checks are operational.** Source CI does not approve real student/customer records, working outgoing email, or an existing public website cutover.
