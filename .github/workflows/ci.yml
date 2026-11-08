@@ -5,14 +5,19 @@ on:
   pull_request:
 jobs:
   api:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - name: Install
         working-directory: apps/api
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.lock.txt
+      - name: Audit Python production dependencies
+        working-directory: apps/api
+        run: |
+          python -m pip install pip-audit==2.9.0
+          python -m pip_audit -r requirements.lock.txt
       - name: Exercise directory, auth, enquiry and student journeys
         working-directory: apps/api
         run: python -m pytest -q
@@ -20,23 +25,54 @@ jobs:
         working-directory: apps/api
         run: DATABASE_URL=sqlite:///./migration-ci.db python -m alembic upgrade head
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - name: Install
         working-directory: apps/web
-        run: npm install --no-audit
+        run: npm ci --no-audit
+      - name: Audit production npm packages
+        working-directory: apps/web
+        run: npm audit --omit=dev --audit-level=high
       - name: Typecheck and build
         working-directory: apps/web
         run: npm run build
+      - name: Validate private AE Compose topology for shared VPS ingress
+        run: |
+          cp .env.example .env
+          AE_STAGING_HOST=ae-staging.example.org docker compose --env-file .env \
+            -f compose.shared-ingress.yaml config --quiet
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          env = dict(os.environ, AE_STAGING_HOST="ae-staging.example.org")
+          result = subprocess.check_output(
+              ["docker", "compose", "--env-file", ".env",
+               "-f", "compose.shared-ingress.yaml", "config", "--format", "json"],
+              text=True, env=env,
+          )
+          stack = json.loads(result)["services"]
+          assert set(stack) == {"db", "minio", "api", "web"}
+          assert all(not service.get("ports") for service in stack.values())
+          for service in ("db", "minio", "api"):
+              assert set(stack[service]["networks"]) == {"private"}
+          assert set(stack["web"]["networks"]) == {"private", "ingress"}
+          env_vars = stack["api"]["environment"]
+          assert env_vars["APP_ENVIRONMENT"] == "production"
+          assert env_vars["LOCAL_DEMO_MODE"] == "0"
+          assert env_vars["SEED_ACCOM_DEMO"] == "0"
+          print("AE shared-host topology verified: no exposed ports or demo login.")
+          PY
       - name: Test live property-template data adapter
         working-directory: apps/web
         run: node --test tests/template-data.test.mjs
 
   docker-api:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

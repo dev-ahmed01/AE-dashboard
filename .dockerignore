@@ -1,0 +1,24 @@
+# Never send private credentials or local customer databases to Docker build contexts.
+.git
+.env
+**/.env
+**/.env.*
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.venv
+**/dist
+*.pyc
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.backup
+*.pem
+*.key
+*.crt
+
+# Private Contabo release material; never commit or send in Docker builds.
+.env.production
+ops/contabo/backups/
+**/*.age

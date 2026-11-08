@@ -7,3 +7,8 @@
 *.pyc
 *.db
 .DS_Store
+
+# Private Contabo release material; never commit or send in Docker builds.
+.env.production
+ops/contabo/backups/
+**/*.age
