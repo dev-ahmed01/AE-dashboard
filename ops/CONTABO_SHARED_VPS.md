@@ -55,6 +55,6 @@ For the legacy local `compose.yaml` stack use the same explicit order: `up -d db
 - Test staff permissions, login throttling, student verification failure mode, no-demo boot, previews, SEO/noindex, listing publish/unpublish behaviour, photo upload/preview and restricted admin access.
 - Verify real pricing and room availability against source property providers; no invented availability, confirmed bookings or financial payment claims. This app does not collect rent.
 - Check TLS cert renewal, Docker resource quotas, disk alerts, HTTP 5xx alert routing, image rights, encrypted off-host backups and a named rollback operator. Keep secrets and personal student data out of CI, Git and chat.
-- Maintain a reviewed, protected `main`, lock dependencies, and deploy images by immutable commit/version. Frontend lacks a committed npm lockfile and API dependencies have broad ranges; both remain reproducibility blockers for an audited production release.
+- Maintain a reviewed, protected `main`, lock dependencies, and deploy images by immutable commit/version. Frontend and Python API now use committed, fully pinned lockfiles in CI and Docker builds; a reviewer must approve lockfile refreshes as deliberate dependency upgrades.
 
 **Current status:** Source staging blueprint only. Shared Caddy and DNS are not configured here. No live VPS test, source-data migration, email sending, external restore drill, or business UAT has been performed.
