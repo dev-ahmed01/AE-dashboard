@@ -32,7 +32,7 @@ jobs:
         with: {node-version: '22'}
       - name: Install
         working-directory: apps/web
-        run: npm install --no-audit
+        run: npm ci --no-audit
       - name: Audit production npm packages
         working-directory: apps/web
         run: npm audit --omit=dev --audit-level=high
