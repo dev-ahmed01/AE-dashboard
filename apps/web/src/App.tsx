@@ -790,6 +790,12 @@ export default function App(){const [path,setPath]=useState(readPath),[user,setU
     setPath('/login')
   }
 },[ready,path,user?.role])
+useEffect(()=>{
+  if(!ready || !user || path!=='/login')return;
+  const destination=user.role==='student'?'/student':'/admin';
+  history.replaceState({},'',destination);
+  setPath(destination);
+},[ready,path,user?.role]);
 if(!ready)return <div className="loading">Opening Accom…</div>;
 const routedPath=path==='/admin'&&(!user||user.role==='student')?'/login':path;
 const inAdmin=routedPath==='/admin';return <>{!inAdmin&&<Header go={go} user={user} logout={logout} hideExplore={routedPath==='/login'||routedPath==='/register'}/>}<>{routedPath.startsWith('/property/')?<Listing slug={decodeURIComponent(routedPath.split('/')[2]||'')} go={go} user={user}/>:(routedPath==='/login'||routedPath==='/register')?<Auth key={path} go={go} setUser={setUser} registration={routedPath==='/register'}/>:routedPath==='/student'?<Student go={go} user={user}/>:inAdmin?<Admin go={go} user={user}/>:routedPath==='/help'?<Support go={go}/>:routedPath==='/verify-email'?<VerifyEmailPage go={go}/>:<Directory go={go} user={user}/>}</>{!inAdmin&&<footer className="site-footer"><div className="wrap"><Logo/><span>Student accommodation, made simpler.</span><span>© {new Date().getFullYear()} Accom by Emlen</span></div></footer>}</>}
