@@ -45,6 +45,10 @@ jobs:
           docker compose --env-file .env.production -f compose.production.yaml up -d --wait db minio
           docker compose --env-file .env.production -f compose.production.yaml \
             run --rm api alembic upgrade head
+          # Reproduce the VPS collision: a different service on shared ingress
+          # advertises the generic "api" alias but does NOT serve port 8000.
+          docker run -d --rm --name ae-ci-unrelated-api --network emlen_ingress \
+            --network-alias api accom-emlen-production-web:latest
           docker compose --env-file .env.production -f compose.production.yaml \
             up -d --wait api web
       - name: Verify non-root NGINX serves AE while all Linux capabilities are dropped
@@ -53,6 +57,9 @@ jobs:
             exec -T web sh -c 'test "$(id -u)" != 0 && test -r /etc/nginx/conf.d/default.conf && test "$(stat -c %a /etc/nginx/conf.d/default.conf)" = 644 && wget -q -O /dev/null http://127.0.0.1:8080/'
           docker compose --env-file .env.production -f compose.production.yaml \
             exec -T web wget -q -O /dev/null http://127.0.0.1:8080/api/health/ready
+          docker compose --env-file .env.production -f compose.production.yaml \
+            exec -T web wget -q -O /dev/null http://ae-prod-api:8000/api/health/ready
+          docker rm -f ae-ci-unrelated-api
       - name: Insert controlled synthetic object and verify the archive stream
         run: |
           docker compose --env-file .env.production -f compose.production.yaml \
