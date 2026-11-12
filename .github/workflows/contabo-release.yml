@@ -33,7 +33,7 @@ jobs:
           sudo apt-get install -y -qq age
       - name: Generate disposable production secrets and verify Docker isolation
         run: |
-          bash ops/contabo/prepare-production.sh ae-ci.internal.test ci-admin@example.test
+          bash ops/contabo/prepare-production.sh ae-ci.internal.test admin
           docker network create emlen_ingress
           bash ops/contabo/preflight.sh
       - name: Build production API image with executable backup helper

@@ -26,14 +26,14 @@ Record the actual release SHA and its CI run URLs. Verify this `main` is protect
 
 ## 2. Create production configuration safely
 
-Choose an **approved dashboard HTTPS hostname** and an actual operator's admin email. DNS A record must point to Contabo and be protected by the admin access policy.
+Choose an **approved dashboard HTTPS hostname** and a five-character lowercase administrator username (letters/digits, starting with a letter). DNS A record must point to Contabo and be protected by the admin access policy. To satisfy the existing database schema, bootstrap creates a non-deliverable technical identifier under the reserved `.invalid` domain; the administrator never needs an email for sign-in. Email-based account recovery is unavailable until a real recovery method is configured.
 
 ```bash
-bash ops/contabo/prepare-production.sh AE-admin.your-owned-domain.tld approved-admin@your-owned-domain.tld
+bash ops/contabo/prepare-production.sh AE-admin.your-owned-domain.tld admin
 bash ops/contabo/preflight.sh
 ```
 
-The setup generates ignored `.env.production` containing unique long random PostgreSQL/JWT/MinIO/Admin secrets; it refuses to overwrite an existing environment. The generated ADMIN_PASSWORD is stored only in the private file—read it on the VPS and rotate it after the first login. Do **not** place any secrets in Git, frontend variables, support tickets, shell commands or CI logs.
+The setup generates ignored `.env.production` containing unique long random PostgreSQL/JWT/MinIO/Admin secrets; it refuses to overwrite an existing environment. Hosted passwords shorter than 12 characters are rejected at runtime and deployment preflight requires at least 20 characters, so bootstrap retains a random 48-character password. The generated ADMIN_PASSWORD is stored only in the private file—read it on the VPS and rotate it after the first login. Do **not** place any secrets in Git, frontend variables, support tickets, shell commands or CI logs.
 
 For an **existing database migration**, account password hashes may be preserved, but all externally referenced secrets, media storage credentials, public domain/canonical values and API URLs must be inventoried carefully. Never assume a fresh secret is compatible with an imported encrypted/hashed identifier.
 

@@ -3,17 +3,21 @@
 set -euo pipefail
 umask 077
 if [[ $# -ne 2 ]]; then
-  echo "Usage: bash ops/contabo/prepare-production.sh <approved-dashboard-host> <real-admin-email>" >&2
+  echo "Usage: bash ops/contabo/prepare-production.sh <approved-dashboard-host> <five-character-admin-username>" >&2
   exit 2
 fi
-HOST="$1"; ADMIN_EMAIL="$2"
+HOST="$1"; ADMIN_USERNAME="$2"
 if [[ ! "$HOST" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ||
       "$HOST" != *.* || "$HOST" == *..* || "$HOST" == *.example.* ]]; then
   echo "STOP: supply a real approved lowercase DNS hostname" >&2; exit 2
 fi
-if [[ ! "$ADMIN_EMAIL" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]; then
-  echo "STOP: valid administrator email required" >&2; exit 2
+if [[ ! "$ADMIN_USERNAME" =~ ^[a-z][a-z0-9]{4}$ ]]; then
+  echo "STOP: administrator username must be exactly five lowercase letters/digits and start with a letter" >&2
+  exit 2
 fi
+# The current user schema requires a unique email-shaped database identifier.
+# This reserved .invalid address is NOT an inbox and cannot receive recovery mail.
+ADMIN_EMAIL="${ADMIN_USERNAME}@bootstrap.invalid"
 command -v openssl >/dev/null || { echo "STOP: OpenSSL required" >&2; exit 2; }
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="$ROOT/.env.production"
@@ -32,7 +36,7 @@ MINIO_ROOT_USER=accom_media
 MINIO_ROOT_PASSWORD=$STORAGE_PASSWORD
 JWT_SECRET=$JWT_SECRET
 ADMIN_EMAIL=$ADMIN_EMAIL
-ADMIN_USERNAME=
+ADMIN_USERNAME=$ADMIN_USERNAME
 ADMIN_PASSWORD=$ADMIN_PASSWORD
 CORS_ORIGIN=https://$HOST
 PUBLIC_SITE_URL=https://$HOST
@@ -52,5 +56,7 @@ SUPPORT_EMAIL=
 EOF
 chmod 600 "$ENV_FILE"
 echo "Generated ignored private $ENV_FILE without displaying secrets."
-echo "Database/media credentials and dashboard admin are unique to this service."
+echo "The administrator will sign in with the five-character username."
+echo "A non-deliverable internal account identifier is retained for database compatibility."
+echo "The generated 48-character password meets production policy; 8-character passwords do not."
 echo "Do not import live data until source inventory, paired backups and approval."
