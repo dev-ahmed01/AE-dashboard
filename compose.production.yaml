@@ -45,7 +45,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set private JWT secret}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?Set real admin email}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set private first-admin password}
-      ADMIN_USERNAME: ""
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
       CORS_ORIGIN: https://${AE_HOST:?Set dashboard HTTPS hostname}
       PUBLIC_SITE_URL: https://${AE_HOST:?Set dashboard HTTPS hostname}
       LOCAL_DEMO_MODE: "0"
