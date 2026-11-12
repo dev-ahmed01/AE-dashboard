@@ -4,7 +4,7 @@
 
 ## Layout and release boundaries
 
-- Docker Compose `compose.production.yaml` runs isolated FastAPI, React/Nginx, PostgreSQL and S3-compatible MinIO services with **zero host-published ports**. Only the web container joins the shared `emlen_ingress` network using alias `ae-prod-web`.
+- Docker Compose `compose.production.yaml` runs isolated FastAPI, React/Nginx, PostgreSQL and S3-compatible MinIO services with **zero host-published ports**. Only the web container joins the shared `emlen_ingress` network using alias `ae-prod-web`. The web image uses non-root NGINX and listens on port `8080` so `cap_drop: [ALL]` and `no-new-privileges` remain enforced. The shared Caddy gateway must proxy to `ae-prod-web:8080`.
 - PostgreSQL and S3 have different persistent named volumes; **both** must be backed up and restored together. Run read-only source inventory before selecting a migration procedure.
 - Release requires protected admin access (Cloudflare Access/SSO or an approved identity-aware reverse proxy), an independently approved domain and HTTPS, restricted SSH, an encrypted offsite backup target, tested restoration, monitoring, a named rollback operator and review/signoff. A hard-to-guess link, noindex or JWT storage in browser sessionStorage is **not** sufficient perimeter security.
 - The admin dashboard is independent of property-domain cutover. **Production demo accounts, demo data seeds and schema auto-creation stay disabled.** Student verification remains unavailable until an authorized SMTP provider is configured, verified and tested. `PUBLIC_SITE_URL` is the chosen dashboard origin for student verification links; confirm the actual property-domain and mailing plan before live registrations.
@@ -44,7 +44,7 @@ Use the already-running `emlen-vps-ingress` service in SaS, not another Caddy/Ng
 ```caddyfile
 AE-admin.your-owned-domain.tld {
   encode zstd gzip
-  reverse_proxy ae-prod-web:80
+  reverse_proxy ae-prod-web:8080
   header X-Content-Type-Options "nosniff"
   header Referrer-Policy "strict-origin-when-cross-origin"
 }
@@ -95,6 +95,8 @@ docker compose --env-file .env.production -f compose.production.yaml up -d api w
 ```
 
 A consistent initial snapshot is a **maintenance window**. Live traffic must not edit data while SQL and S3 are being snapshotted independently. This is not automatic PITR or zero-downtime backup.
+
+Before exposing the dashboard through Caddy, check the private service from the gateway container: `docker exec emlen-central-ingress-caddy-1 wget -qO- http://ae-prod-web:8080/` and `docker exec emlen-central-ingress-caddy-1 wget -qO- http://ae-prod-web:8080/api/health/ready`. These private checks do not substitute for protected HTTPS and administrator access controls.
 
 ## 6. HTTPS smoke and business UAT
 
