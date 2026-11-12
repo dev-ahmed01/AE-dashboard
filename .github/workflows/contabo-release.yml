@@ -38,14 +38,20 @@ jobs:
           bash ops/contabo/preflight.sh
       - name: Build production API image with executable backup helper
         run: |
-          docker compose --env-file .env.production -f compose.production.yaml build api
+          docker compose --env-file .env.production -f compose.production.yaml build api web
       - name: Create production-mode PostgreSQL schema on fresh private stores
         run: |
           docker compose --env-file .env.production -f compose.production.yaml up -d --wait db minio
           docker compose --env-file .env.production -f compose.production.yaml \
             run --rm api alembic upgrade head
           docker compose --env-file .env.production -f compose.production.yaml \
-            up -d --wait api
+            up -d --wait api web
+      - name: Verify non-root NGINX serves AE while all Linux capabilities are dropped
+        run: |
+          docker compose --env-file .env.production -f compose.production.yaml \
+            exec -T web sh -c 'test "$(id -u)" != 0 && wget -q -O /dev/null http://127.0.0.1:8080/'
+          docker compose --env-file .env.production -f compose.production.yaml \
+            exec -T web wget -q -O /dev/null http://127.0.0.1:8080/api/health/ready
       - name: Insert controlled synthetic object and verify the archive stream
         run: |
           docker compose --env-file .env.production -f compose.production.yaml \
