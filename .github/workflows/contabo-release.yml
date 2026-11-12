@@ -38,6 +38,7 @@ jobs:
           bash ops/contabo/preflight.sh
       - name: Build production API image with executable backup helper
         run: |
+          chmod 600 apps/web/nginx.conf  # Reproduce restricted source-checkout umask on VPS
           docker compose --env-file .env.production -f compose.production.yaml build api web
       - name: Create production-mode PostgreSQL schema on fresh private stores
         run: |
@@ -49,7 +50,7 @@ jobs:
       - name: Verify non-root NGINX serves AE while all Linux capabilities are dropped
         run: |
           docker compose --env-file .env.production -f compose.production.yaml \
-            exec -T web sh -c 'test "$(id -u)" != 0 && wget -q -O /dev/null http://127.0.0.1:8080/'
+            exec -T web sh -c 'test "$(id -u)" != 0 && test -r /etc/nginx/conf.d/default.conf && test "$(stat -c %a /etc/nginx/conf.d/default.conf)" = 644 && wget -q -O /dev/null http://127.0.0.1:8080/'
           docker compose --env-file .env.production -f compose.production.yaml \
             exec -T web wget -q -O /dev/null http://127.0.0.1:8080/api/health/ready
       - name: Insert controlled synthetic object and verify the archive stream
